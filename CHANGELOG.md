@@ -4,6 +4,9 @@ Notable changes are recorded here. Merging a change is not a release.
 
 ## [Unreleased]
 
+The initial offline journal slice is tracked in
+[#1](https://github.com/caiocalhau/meditations/pull/1).
+
 ### Added
 
 - Initial Python CLI for private workspace setup, normalized evidence import,
