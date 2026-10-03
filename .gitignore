@@ -1,0 +1,33 @@
+# Local planning; durable public design lives under docs/architecture/.
+/docs/superpowers/
+
+# Credentials and local configuration.
+.env
+.env.*
+!.env.example
+/.codex/
+/.agents/
+/.aws/
+
+# Reserved local-only workspace/state directories.
+/private-workspace/
+/local-state/
+
+# Python environments, caches, and generated distribution artifacts.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+/build/
+/dist/
+*.egg-info/
+
+# Operating system metadata.
+.DS_Store
