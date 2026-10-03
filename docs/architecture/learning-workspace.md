@@ -1,6 +1,6 @@
 # Learning workspace architecture
 
-Status: agreed product direction; application implementation has not started. Interfaces, package names, minimum versions, and live integration behavior remain to be verified.
+Status: first offline slice implemented; full MVP and live integration remain pending verification. The current CLI supports initialization, normalized record import, deterministic daily rendering, and status. Broader presentation settings and subsequent slices are not implemented.
 
 ## Purpose and release scope
 
@@ -111,4 +111,12 @@ Publish reusable source, synthetic fixtures, configuration templates, README, ch
 
 Keep documentation in English and accurate to delivered behavior. Update this architecture when contracts or data flow change and record notable changes under `[Unreleased]` with PR links when available. A merge is not a release. Use focused Conventional Commits and obtain required authorization for Git mutations and publication.
 
-Before implementation, resolve minimum Python/Codex versions, dependency choices, packaging, exact identity/revision contracts, generated/handwritten boundaries, scheduler templates, and context-delivery interfaces. Select a product name and license before release. No installation or runtime commands are claimed verified yet.
+The offline slice uses Python >=3.10, pinned Pydantic v2, setuptools packaging, and argparse. Runtime commands are `init`, `import-records`, `render`, and `status`; the README documents the synthetic walkthrough. Current settings support English, portable links, HTML details, and a required IANA timezone. Other presentation choices remain required for the full MVP.
+
+Persist individual JSON records by UUID and validate source identities independently of filenames. Source identity is workspace/agent/session/segment/revision. Exact duplicates are unchanged; differing content or record IDs for the same revision produce a visible conflict in this slice. Preserve historical revisions and render only the highest revision per source segment. Source revision assignment and cross-installation canonicalization remain adapter/synchronization work.
+
+Initialization validates all managed directory paths and configuration before writing, rejects layout symlinks/obstructions, and publishes configuration atomically under a local lock. Persisted configuration must include its schema version and workspace identity; loading cannot invent either. Checkout detection examines the selected path's ancestors independently of package installation location. Imports preflight identity conflicts against both existing and incoming evidence before writing; interrupted valid batches retain completed records for safe retry.
+
+Generated daily content is bounded by `<!-- meditations:generated:start -->` and `<!-- meditations:generated:end -->`; text outside the block is preserved byte-for-byte. Local locks live in a user-owned temporary directory outside synchronized records. Atomic replacement checks the original file content before replacement, detecting intervening edits; this is not a guarantee against simultaneous external synchronization after the check. Changed content or invalid markers produces a conflict rather than a silent choice.
+
+Minimum supported Codex versions, capture formats, scheduler templates, broader configuration, and context-delivery interfaces remain pending. Select a product name and license before release. Local evidence covers Linux/Python 3.10; macOS and Python 3.14 CI execution remain pending.

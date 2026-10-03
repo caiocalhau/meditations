@@ -4,7 +4,7 @@ Turn everyday AI-assisted work into a clearer understanding of what you know, wh
 
 This project is a personal engineering journal and development workspace. Its intended workflow captures learning evidence from connected AI sessions, organizes it into concise daily notes, and uses that history to support reflection, focused practice, and continuity across sessions.
 
-**Status:** design and implementation planning; application implementation has not started. This README describes the agreed product direction, not a verified list of shipped capabilities. Installation commands, supported versions, and executable configuration examples will be documented as implementation is validated. The project name is still being decided.
+**Status:** first implementation slice: offline records and daily rendering. Automatic Codex capture, inference, coaching, context retrieval, and weekly/monthly reviews are still planned. The full MVP is not complete and no release has been published. The project name is still being decided.
 
 ## Why I’m building this
 
@@ -33,6 +33,68 @@ Weekly reviews help choose one or two practical learning actions. Monthly assess
 The intended cycle is:
 
 **Work → capture evidence → reflect → practice → revisit the evidence.**
+
+## Try the offline journal
+
+The current CLI initializes a private directory, imports normalized synthetic
+evidence, renders daily Markdown, and reports record counts and note conflicts.
+It does not read Codex history or call a model. Reimporting identical evidence is
+safe; conflicting identities are reported instead of silently replaced.
+
+From this checkout, use Python >=3.10 on Linux/macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install .
+meditations --help
+```
+
+Local verification currently uses Linux and Python 3.10.12. The CI matrix targets
+Linux/macOS on Python 3.10 and 3.14; those CI results are pending. Prefer a supported
+Python release for regular use.
+
+Create a disposable example workspace outside the checkout:
+
+```bash
+MEDITATIONS_DEMO_DIR="$(mktemp -d)"
+export MEDITATIONS_DEMO_DIR
+meditations init --workspace "$MEDITATIONS_DEMO_DIR/notes" --timezone America/Sao_Paulo
+python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+demo = Path(os.environ["MEDITATIONS_DEMO_DIR"])
+workspace_id = json.loads((demo / "notes/workspace.json").read_text())["workspace_id"]
+records = [json.loads(line) for line in Path("examples/records.jsonl").read_text().splitlines()]
+for record in records:
+    record["workspace_id"] = workspace_id
+(demo / "input.jsonl").write_text("".join(json.dumps(record) + "\n" for record in records))
+PY
+meditations import-records --workspace "$MEDITATIONS_DEMO_DIR/notes" --input "$MEDITATIONS_DEMO_DIR/input.jsonl"
+meditations render --workspace "$MEDITATIONS_DEMO_DIR/notes"
+meditations status --workspace "$MEDITATIONS_DEMO_DIR/notes"
+```
+
+Import reports `{"created": 3, "unchanged": 0}`; running it again reports
+`{"created": 0, "unchanged": 3}`. Two daily notes appear under
+`$MEDITATIONS_DEMO_DIR/notes/engineering/daily/`: `2026-10-03.md` and
+`2026-10-04.md`, connected by task links. No login or inference is required.
+The [sample daily note](examples/daily-note.md) shows the synthetic output.
+
+Read those notes in your editor. Add reflection below the generated block and
+rerun `render`; your text is preserved. Text inside the generated block is replaced.
+Notes without exactly one valid pair of markers are left untouched and reported
+as conflicts. Keep personal edits outside that block. Once finished, you can remove
+the disposable directory printed by `echo "$MEDITATIONS_DEMO_DIR"`.
+
+Configuration is stored in `workspace.json`; records are individual JSON files.
+The first slice supports English, portable Markdown links, and HTML details.
+Other presentation settings remain part of the full MVP. Source revisions must
+use distinct record UUIDs; earlier revisions remain stored but only the latest
+contributes to notes. Correct records by importing a new revision rather than
+editing generated sections.
 
 ## First-release scope
 
@@ -182,7 +244,7 @@ Assessments describe available evidence. They are not certifications of competen
 
 These are planned milestones, not completed features. All five belong to the MVP; a records-only demo is an intermediate development checkpoint:
 
-- [ ] Local configuration, evidence records, and deterministic daily rendering.
+- [x] Local configuration, evidence records, and deterministic daily rendering (offline slice; broader presentation settings remain pending).
 - [ ] Evaluated extraction, configurable model roles, and usage reporting.
 - [ ] Codex capture, durable checkpoints, and reconciliation.
 - [ ] Installation/update behavior and cross-machine conflict handling.
@@ -192,7 +254,28 @@ Future possibilities include additional agent and storage adapters, richer visua
 
 The priority is a reliable feedback loop before expanding integrations or adding progression mechanics.
 
-The [learning workspace architecture](docs/architecture/learning-workspace.md) documents the MVP scope, component boundaries, evidence contracts, recovery, privacy, and acceptance criteria. Temporary implementation plans and handoffs remain local. Runnable examples and installation/development instructions will be added as their commands are verified. The open-source license remains to be selected before release.
+The [learning workspace architecture](docs/architecture/learning-workspace.md) documents the MVP scope, component boundaries, evidence contracts, recovery, privacy, and acceptance criteria. Temporary implementation plans and handoffs remain local. The open-source license remains to be selected before release.
+
+## Development
+
+Activate the project environment, then install the pinned development tools and
+the editable package:
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pip install --no-build-isolation -e .
+ruff check .
+ruff format --check .
+pyright
+pytest
+python -m build --no-isolation
+```
+
+Tests use temporary workspaces and synthetic evidence. Distribution artifacts
+include reusable source and public documentation; the local handoff, credentials,
+and user records must stay excluded. Notable changes are recorded in
+[CHANGELOG.md](CHANGELOG.md). CI is configured but its platform results remain
+unverified until run on GitHub.
 
 ## Contributing
 
