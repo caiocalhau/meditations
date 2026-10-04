@@ -340,6 +340,11 @@ unverified until run on GitHub.
 
 The repository follows the documentation approach used in the owner's The Archives project: keep the README accurate to delivered behavior, maintain durable architecture documentation, and record notable changes in an `[Unreleased]` changelog as implementation begins. Temporary agent plans and private runtime data stay outside version control. Public examples and evaluation fixtures use synthetic data.
 
+The [versioning policy](docs/architecture/versioning.md) explains the Keep a
+Changelog structure, Semantic Versioning for releases, and Python development
+versions. A merged PR is not a release; changes remain under `[Unreleased]` until
+an explicitly approved release is prepared.
+
 While the interfaces are evolving, useful contributions include synthetic evaluation cases, discussions of learning and assessment, reproducible synchronization failures, and feedback on note readability.
 
 Please use synthetic or deliberately sanitized examples in public issues. Avoid uploading employer conversations, credentials, or private professional records.
