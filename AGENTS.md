@@ -10,6 +10,10 @@
 - Update README when delivered behavior or setup changes and architecture when
   contracts change. Record notable changes under CHANGELOG.md's `[Unreleased]`,
   adding PR links when known. A merge is not a release.
+- Follow Keep a Changelog: group unreleased changes by category, place released
+  versions newest first, and use actual release dates. Unreleased entries may be
+  consolidated after merge. Preserve release facts when correcting older text;
+  never alter published artifacts or move tags. See docs/architecture/versioning.md.
 - Keep docs/superpowers local and ignored; never force-add it. Never commit user
   notes, conversations, employer material, credentials, runtime state, or private
   evaluations. Inspect package contents as well as staged files.

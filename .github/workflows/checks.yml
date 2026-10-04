@@ -26,5 +26,8 @@ jobs:
       - run: .venv/bin/ruff check .
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/pyright
+      - run: .venv/bin/pyright --pythonplatform Linux
+      - run: .venv/bin/pyright --pythonplatform Darwin
       - run: .venv/bin/pytest
+      - run: .venv/bin/python scripts/evaluate_extraction.py
       - run: .venv/bin/python -m build --no-isolation

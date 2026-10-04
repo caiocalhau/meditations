@@ -91,3 +91,32 @@ def import_records(workspace: Path, source: Path) -> tuple[int, int]:
         for record in pending:
             _write_record(workspace, record)
     return len(pending), unchanged
+
+
+def validate_record_batch(
+    workspace: Path, records: list[EvidenceRecord]
+) -> tuple[list[EvidenceRecord], int]:
+    """Preflight a batch; caller must hold the workspace lock through publication."""
+    config = load_workspace(workspace)
+    if any(record.workspace_id != config.workspace_id for record in records):
+        raise ValueError("Evidence belongs to a different workspace")
+    existing = load_records(workspace)
+    pending: list[EvidenceRecord] = []
+    unchanged = 0
+    for record in records:
+        if _record_result(existing, record) == "created":
+            pending.append(record)
+            existing.append(record)
+        else:
+            unchanged += 1
+    return pending, unchanged
+
+
+def publish_records_locked(
+    workspace: Path, records: list[EvidenceRecord]
+) -> tuple[int, int]:
+    """Publish a preflighted batch under a lock already held by the caller."""
+    pending, unchanged = validate_record_batch(workspace, records)
+    for record in pending:
+        _write_record(workspace, record)
+    return len(pending), unchanged

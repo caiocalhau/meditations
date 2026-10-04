@@ -1,6 +1,6 @@
 # Learning workspace architecture
 
-Status: first offline slice implemented; full MVP and live integration remain pending verification. The current CLI supports initialization, normalized record import, deterministic daily rendering, and status. Broader presentation settings and subsequent slices are not implemented.
+Status: offline journal and manual extraction pipeline implemented. The CLI supports initialization, normalized record import, conversation preview, gated extraction, deterministic daily rendering, and status. Live Codex compatibility/isolation and semantic evaluations remain unverified. Automatic capture and the remaining full-MVP features are pending.
 
 ## Purpose and release scope
 
@@ -111,7 +111,7 @@ Publish reusable source, synthetic fixtures, configuration templates, README, ch
 
 Keep documentation in English and accurate to delivered behavior. Update this architecture when contracts or data flow change and record notable changes under `[Unreleased]` with PR links when available. A merge is not a release. Use focused Conventional Commits and obtain required authorization for Git mutations and publication.
 
-The offline slice uses Python >=3.10, pinned Pydantic v2, setuptools packaging, and argparse. Runtime commands are `init`, `import-records`, `render`, and `status`; the README documents the synthetic walkthrough. Current settings support English, portable links, HTML details, and a required IANA timezone. Other presentation choices remain required for the full MVP.
+The offline slice uses Python >=3.10, pinned Pydantic v2, setuptools packaging, and argparse. Runtime commands are `init`, `import-records`, `extract`, `render`, and `status`; the README documents the synthetic walkthrough. Current settings support English, portable links, HTML details, and a required IANA timezone. Other presentation choices remain required for the full MVP.
 
 Persist individual JSON records by UUID and validate source identities independently of filenames. Source identity is workspace/agent/session/segment/revision. Exact duplicates are unchanged; differing content or record IDs for the same revision produce a visible conflict in this slice. Preserve historical revisions and render only the highest revision per source segment. Source revision assignment and cross-installation canonicalization remain adapter/synchronization work.
 
@@ -119,4 +119,14 @@ Initialization validates all managed directory paths and configuration before wr
 
 Generated daily content is bounded by `<!-- meditations:generated:start -->` and `<!-- meditations:generated:end -->`; text outside the block is preserved byte-for-byte. Local locks live in a user-owned temporary directory outside synchronized records. Atomic replacement checks the original file content before replacement, detecting intervening edits; this is not a guarantee against simultaneous external synchronization after the check. Changed content or invalid markers produces a conflict rather than a silent choice.
 
-Minimum supported Codex versions, capture formats, scheduler templates, broader configuration, and context-delivery interfaces remain pending. Select a product name and license before release. Local evidence covers Linux/Python 3.10; macOS and Python 3.14 CI execution remain pending.
+Minimum supported Codex versions, capture formats, scheduler templates, broader configuration, and context-delivery interfaces remain pending. Select a product name and license before release. Local evidence covers Linux/Python 3.10. The first journal slice passed Linux/macOS CI on Python 3.10 and 3.14; the extraction changes still require their own CI run.
+
+## Manual extraction implementation
+
+The manual extraction pipeline now provides normalized conversation preview,
+source/role validation, an offline-tested Codex adapter, bounded repair, private
+receipts, interruption recovery, and active revision selection. Existing evidence
+schema version 1 remains unchanged. Live provider isolation/account compatibility
+and semantic evaluations remain unverified. See [the extraction contract](extraction.md)
+for the exact input, privacy boundaries, limits, receipts, and activation gate.
+Automatic capture and the remaining full-MVP slices are still pending.
