@@ -10,12 +10,20 @@ from meditations.config import (
     load_workspace,
     validate_workspace_path,
 )
+from meditations.extraction.cli import add_extract_command, extract_command
+from meditations.extraction.provider import ExtractionProvider
+from meditations.extraction.receipts import select_active_records
 from meditations.files import workspace_directory, workspace_lock
 from meditations.render import generated_bounds, render_daily, update_daily_note
 from meditations.store import import_records, load_records
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    provider: ExtractionProvider | None = None,
+    state_directory: Path | None = None,
+) -> int:
     parser = argparse.ArgumentParser(prog="meditations")
     commands = parser.add_subparsers(dest="command", required=True)
     init = commands.add_parser("init", help="Initialize a private records directory")
@@ -29,9 +37,12 @@ def main(argv: list[str] | None = None) -> int:
     for command in ("render", "status"):
         child = commands.add_parser(command)
         child.add_argument("--workspace", type=Path, required=True)
+    add_extract_command(commands.add_parser)
     args = parser.parse_args(argv)
     try:
         workspace = validate_workspace_path(args.workspace)
+        if args.command == "extract":
+            return extract_command(args, provider, state_directory)
         if args.command == "init":
             initialize_workspace(workspace, args.timezone)
             print("Initialized private workspace")
@@ -42,11 +53,13 @@ def main(argv: list[str] | None = None) -> int:
             with workspace_lock(workspace):
                 config = load_workspace(workspace)
                 records = load_records(workspace)
+                active_records = select_active_records(workspace, records)
                 directory = workspace_directory(workspace, "engineering/daily")
                 if args.command == "render":
                     zone = ZoneInfo(config.timezone)
                     days = {
-                        record.occurred_at.astimezone(zone).date() for record in records
+                        record.occurred_at.astimezone(zone).date()
+                        for record in active_records
                     }
                     for path in directory.glob("*.md"):
                         try:
@@ -58,7 +71,7 @@ def main(argv: list[str] | None = None) -> int:
                         try:
                             update_daily_note(
                                 directory / f"{day}.md",
-                                render_daily(records, config, day),
+                                render_daily(active_records, config, day),
                             )
                         except ValueError:
                             conflicts.append(day.isoformat())

@@ -4,7 +4,7 @@ Turn everyday AI-assisted work into a clearer understanding of what you know, wh
 
 This project is a personal engineering journal and development workspace. Its intended workflow captures learning evidence from connected AI sessions, organizes it into concise daily notes, and uses that history to support reflection, focused practice, and continuity across sessions.
 
-**Status:** first implementation slice: offline records and daily rendering. Automatic Codex capture, inference, coaching, context retrieval, and weekly/monthly reviews are still planned. The full MVP is not complete and no release has been published. The project name is still being decided.
+**Status:** offline journal and manual extraction pipeline. Conversation preview, validation, recoverable receipts, and an offline-tested Codex adapter are implemented. Live Codex extraction remains gated on runtime compatibility/isolation and human-reviewed evaluations. Automatic capture, coaching, context retrieval, and weekly/monthly reviews are still planned. The full MVP is not complete and no release has been published. The project name is still being decided.
 
 ## Why I’m building this
 
@@ -36,9 +36,9 @@ The intended cycle is:
 
 ## Try the offline journal
 
-The current CLI initializes a private directory, imports normalized synthetic
+The journal commands initialize a private directory, import normalized synthetic
 evidence, renders daily Markdown, and reports record counts and note conflicts.
-It does not read Codex history or call a model. Reimporting identical evidence is
+These journal commands do not read Codex history or call a model. Reimporting identical evidence is
 safe; conflicting identities are reported instead of silently replaced.
 
 From this checkout, use Python >=3.10 on Linux/macOS:
@@ -51,7 +51,8 @@ meditations --help
 ```
 
 Local verification currently uses Linux and Python 3.10.12. The CI matrix targets
-Linux/macOS on Python 3.10 and 3.14; those CI results are pending. Prefer a supported
+Linux/macOS on Python 3.10 and 3.14; the first slice passed that matrix.
+The new extraction changes still require their own CI run. Prefer a supported
 Python release for regular use.
 
 Create a disposable example workspace outside the checkout:
@@ -95,6 +96,58 @@ Other presentation settings remain part of the full MVP. Source revisions must
 use distinct record UUIDs; earlier revisions remain stored but only the latest
 contributes to notes. Correct records by importing a new revision rather than
 editing generated sections.
+
+## Preview and test manual extraction
+
+Supply a normalized conversation with explicit message roles, IDs, task metadata,
+and aware occurrence times. The [synthetic input](examples/conversation.json)
+shows the format. Each unit covers one task/day; automatic segmentation and history
+capture are still pending.
+
+```bash
+meditations extract --workspace "$MEDITATIONS_DEMO_DIR/notes" \
+  --input examples/conversation.json --preview
+```
+
+Preview makes no model call or writes. Add `--show-payload` only when you want the
+submitted source and initial instructions printed to your terminal. Missing source
+times require an explicit `--occurred-at '2026-10-03T12:00:00-03:00'` override;
+records disclose that the original time is unavailable.
+
+Try the full pipeline with a fixed synthetic provider, without login/inference:
+
+```bash
+MEDITATIONS_EXTRACTION_DEMO="$(mktemp -d)"
+python scripts/offline_extraction_demo.py \
+  --workspace "$MEDITATIONS_EXTRACTION_DEMO/notes"
+```
+
+The resulting `engineering/daily/2026-10-03.md` contains one finding. Repeating
+this demo reuses its receipt and evidence. This verifies integration, not model
+quality. Inspect the temporary directory before removing it manually.
+
+Real model execution additionally requires `--run-model --model '<approved-model>'`
+and a private `--runtime-approval` capability record. **Live compatibility and
+isolation have not been verified; do not activate it before completing the
+[documented gate](docs/architecture/extraction.md).** A runtime approval is an
+operator attestation, not a sandbox. Login does not imply unlimited usage.
+
+Known sensitive literals can be supplied through a private JSON-list
+`--redact-file`; recognized credential patterns are also filtered. These controls
+do not guarantee confidentiality. No input path, raw transcript, or prompt is saved
+in extraction receipts. Provider inference sends selected material off the machine.
+
+Extraction stores supported evidence and reports unresolved messages. Run
+`meditations render` separately after inspecting its status. Reusing identical
+input/settings makes no model call; changes require a higher source revision.
+An empty new revision can supersede older findings while preserving history.
+Interrupted record publication can resume without another model call. There are at
+most two attempts per unit, with no automatic retry for authentication, refusal,
+rate limits, timeout, or incomplete output.
+
+See the [extraction contract](docs/architecture/extraction.md) and
+[synthetic evaluation set](evals/extraction/README.md). Evaluation annotations await
+owner review; no live semantic results or model comparison are claimed.
 
 ## First-release scope
 

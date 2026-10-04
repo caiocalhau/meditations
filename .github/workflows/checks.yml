@@ -27,4 +27,5 @@ jobs:
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/pyright
       - run: .venv/bin/pytest
+      - run: .venv/bin/python scripts/evaluate_extraction.py
       - run: .venv/bin/python -m build --no-isolation
