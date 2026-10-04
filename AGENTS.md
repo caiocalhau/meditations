@@ -10,6 +10,8 @@
 - Update README when delivered behavior or setup changes and architecture when
   contracts change. Record notable changes under CHANGELOG.md's `[Unreleased]`,
   adding PR links when known. A merge is not a release.
+- Append new changelog entries after existing history; preserve entries already
+  merged. Revise only entries introduced by the current unmerged work.
 - Keep docs/superpowers local and ignored; never force-add it. Never commit user
   notes, conversations, employer material, credentials, runtime state, or private
   evaluations. Inspect package contents as well as staged files.
