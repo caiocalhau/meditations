@@ -1,0 +1,30 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.10', '3.14']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install -r requirements-dev.txt
+      - run: .venv/bin/python -m pip install --no-build-isolation -e .
+      - run: .venv/bin/ruff check .
+      - run: .venv/bin/ruff format --check .
+      - run: .venv/bin/pyright
+      - run: .venv/bin/pytest
+      - run: .venv/bin/python -m build --no-isolation
