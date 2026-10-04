@@ -320,9 +320,15 @@ python -m pip install --no-build-isolation -e .
 ruff check .
 ruff format --check .
 pyright
+pyright --pythonplatform Linux
+pyright --pythonplatform Darwin
 pytest
 python -m build --no-isolation
 ```
+
+Explicit platform checks catch platform-dependent type errors even from a Linux
+checkout. They do not emulate macOS processes or filesystems; the CI matrix still
+executes the tests on real Linux and macOS runners.
 
 Tests use temporary workspaces and synthetic evidence. Distribution artifacts
 include reusable source and public documentation; the local handoff, credentials,

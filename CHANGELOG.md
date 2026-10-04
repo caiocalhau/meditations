@@ -4,6 +4,12 @@ Notable changes are recorded here. Merging a change is not a release.
 
 ## [Unreleased]
 
+### Fixed
+
+- Platform-specific installation state selection now passes type checks for both
+  Linux and macOS; regression tests cover XDG overrides, macOS paths, and persisted
+  installation identities. CI also checks both target platforms explicitly.
+
 The initial offline journal slice is tracked in
 [#1](https://github.com/caiocalhau/meditations/pull/1). The manual extraction
 pipeline is tracked in [#2](https://github.com/caiocalhau/meditations/pull/2).

@@ -56,16 +56,18 @@ class ExtractionOutcome:
     usage: list[Usage] = field(default_factory=lambda: list[Usage]())
 
 
+def default_state_directory(platform: str) -> Path:
+    root = (
+        Path.home() / "Library/Application Support"
+        if platform == "darwin"
+        else Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
+    )
+    return root / "meditations"
+
+
 def installation_id(directory: Path | None = None) -> UUID:
     if directory is None:
-        root = (
-            Path.home() / "Library/Application Support"
-            if sys.platform == "darwin"
-            else Path(
-                os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))
-            )
-        )
-        directory = root / "meditations"
+        directory = default_state_directory(sys.platform)
     directory = directory.expanduser().absolute()
     with workspace_lock(directory):
         if directory.is_symlink():
