@@ -1,12 +1,25 @@
 # Learning workspace architecture
 
-Status: offline journal and manual extraction pipeline implemented. The CLI supports initialization, normalized record import, conversation preview, gated extraction, deterministic daily rendering, and status. Live Codex compatibility/isolation and semantic evaluations remain unverified. Automatic capture and the remaining full-MVP features are pending.
+Status: offline journal and manual extraction pipeline implemented. The CLI supports initialization, normalized record import, conversation preview, gated extraction, deterministic daily rendering, and status. Live Codex compatibility/isolation and semantic evaluations remain unverified. Daily automation and the complete learning workspace remain pending.
 
 ## Purpose and release scope
 
 Help developers strengthen engineering fundamentals through evidence-based reflection on everyday AI-assisted work. Preserve reasoning, decisions, uncertainty, and observable outcomes so users can revisit their understanding and choose useful practice. Completed agent work is not proof of user mastery.
 
-The first release includes the full learning loop:
+Delivery proceeds through three useful outcomes:
+
+1. **Assisted journal:** explicitly supplied session material becomes grounded daily
+   notes with readable processing feedback and protected personal reflection.
+   Manual weekly/monthly feedback may use selected notes in an external assistant;
+   integrated review commands are not prerequisites for this delivery.
+2. **Daily automation:** incremental capture, end-of-day scheduling, recovery,
+   pause/exclusions, safe installation, and synchronized contributions remove
+   routine commands. Unavailable machines defer work rather than lose evidence.
+3. **Complete learning workspace:** integrated weekly/monthly reviews, skeptical
+   longitudinal analysis, reviewed memory, selective context, coaching modes, and
+   broader presentation options.
+
+The complete vision includes:
 
 - A Python CLI for setup, status, manual processing, and recovery, also used by hooks and scheduled workers.
 - Local Codex integration on Linux and macOS, using existing Codex login for model execution.
@@ -99,7 +112,20 @@ Minimize code, confidential names/schemas, credentials, customer data, and secur
 
 ## Delivery and acceptance
 
-Build five implementation slices: records/rendering; evaluated extraction; capture/recovery; installation/synchronization; context/coaching/reviews. All five belong to the MVP. Improve the complete workflow through usage afterward.
+Retain five construction slices: records/rendering; evaluated extraction;
+capture/recovery; installation/synchronization; context/coaching/reviews. The first
+two support the assisted journal; capture and installation/synchronization support
+automation; context/coaching/reviews complete the vision. The former requirement
+to finish all five before a first usable delivery is superseded. Do not describe
+synthetic/manual-record demos as evaluated real-session extraction.
+
+Assisted-journal acceptance requires useful notes from approved nonsensitive session
+material, source-grounded attribution, disclosed uncertainty, readable processing
+results, correct occurrence dates, repeatable imports, and preserved user reflection.
+Do not invent reflection or diagnose competence from questions alone. Evaluate
+contradictions and pressure to agree as well as unsupported praise; skepticism must
+not manufacture errors. Prompt instructions are not guarantees of unbiased output.
+These semantic/usability gates remain pending; passing offline checks is insufficient.
 
 Acceptance covers task continuity and relevance filtering; multiple sessions consolidated by day; cross-date links; duplicate processing; interrupted writes; absent reflection; synchronized contributions and user edits; timezone/midnight boundaries; correct attribution; traceable and revisable reviews; confidentiality omissions; instruction-like captured content; safe updates; coaching modes; reviewed-memory retrieval; and weekly/monthly learning actions.
 
@@ -111,7 +137,7 @@ Publish reusable source, synthetic fixtures, configuration templates, README, ch
 
 Keep documentation in English and accurate to delivered behavior. Update this architecture when contracts or data flow change and record notable changes under `[Unreleased]` with PR links when available. A merge is not a release. Use focused Conventional Commits and obtain required authorization for Git mutations and publication.
 
-The offline slice uses Python >=3.10, pinned Pydantic v2, setuptools packaging, and argparse. Runtime commands are `init`, `import-records`, `extract`, `render`, and `status`; the README documents the synthetic walkthrough. Current settings support English, portable links, HTML details, and a required IANA timezone. Other presentation choices remain required for the full MVP.
+The offline slice uses Python >=3.10, pinned Pydantic v2, setuptools packaging, and argparse. Runtime commands are `init`, `import-records`, `extract`, `render`, and `status`; the README documents the synthetic walkthrough. Current settings support English, portable links, HTML details, and a required IANA timezone. Broader presentation choices remain part of the complete vision.
 
 Persist individual JSON records by UUID and validate source identities independently of filenames. Source identity is workspace/agent/session/segment/revision. Exact duplicates are unchanged; differing content or record IDs for the same revision produce a visible conflict in this slice. Preserve historical revisions and render only the highest revision per source segment. Source revision assignment and cross-installation canonicalization remain adapter/synchronization work.
 
@@ -119,7 +145,7 @@ Initialization validates all managed directory paths and configuration before wr
 
 Generated daily content is bounded by `<!-- meditations:generated:start -->` and `<!-- meditations:generated:end -->`; text outside the block is preserved byte-for-byte. Local locks live in a user-owned temporary directory outside synchronized records. Atomic replacement checks the original file content before replacement, detecting intervening edits; this is not a guarantee against simultaneous external synchronization after the check. Changed content or invalid markers produces a conflict rather than a silent choice.
 
-Minimum supported Codex versions, capture formats, scheduler templates, broader configuration, and context-delivery interfaces remain pending. Select a product name and license before release. Local evidence covers Linux/Python 3.10. The first journal slice passed Linux/macOS CI on Python 3.10 and 3.14; the extraction changes still require their own CI run.
+Minimum supported Codex versions, capture formats, scheduler templates, broader configuration, and context-delivery interfaces remain pending. Select a product name and license before release. Local evidence covers Linux/Python 3.10. The journal and manual extraction changes passed Linux/macOS CI on Python 3.10 and 3.14; live provider compatibility and semantic acceptance remain unverified.
 
 ## Manual extraction implementation
 
@@ -129,4 +155,4 @@ receipts, interruption recovery, and active revision selection. Existing evidenc
 schema version 1 remains unchanged. Live provider isolation/account compatibility
 and semantic evaluations remain unverified. See [the extraction contract](extraction.md)
 for the exact input, privacy boundaries, limits, receipts, and activation gate.
-Automatic capture and the remaining full-MVP slices are still pending.
+Daily automation and the remaining complete-workspace capabilities are still pending.

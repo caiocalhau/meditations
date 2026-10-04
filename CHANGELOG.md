@@ -29,6 +29,12 @@ versions and release preparation. Merging a change is not a release.
 - Twelve synthetic evaluation cases, separate structural checks, and a human review
   rubric. ([#2])
 
+### Changed
+
+- Delivery documentation distinguishes the assisted journal, daily automation, and
+  complete learning workspace, with evidence-based review criteria for the initial
+  pilot and operation-scoped, text-only analysis permissions.
+
 ### Fixed
 
 - Platform-specific installation state selection now passes type checks for both

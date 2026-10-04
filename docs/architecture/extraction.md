@@ -124,13 +124,35 @@ The adapter rejects observed tool/action events, but detection after an event ca
 undo an action. Actual restrictions must be established before a live call; prompt
 instructions and read-only filesystem permissions alone are insufficient.
 
+### Target boundary: text-only analysis
+
+The extraction operation accepts application-selected conversation data and returns
+structured evidence candidates. The model must have no action tools available in
+this operation: no shell, file access, browser, connectors, delegated agents, or
+model-triggered writes. Application code selects input, validates candidates, assigns
+identities and destinations, persists records, and renders notes through its existing rules.
+Model output never authorizes commands, configuration changes, or arbitrary paths.
+
+Enforce this boundary for the extraction invocation, preserving saved login and
+required security policies. Do not permanently disable the user's development
+environment. Configuration or guidance may remain when compatible with this
+boundary; blocking every configuration/instruction read is not a requirement.
+Hooks or integrations must not cause unrelated actions during extraction.
+
+This is the target contract, not a verified capability of the current adapter.
+JSON schemas constrain data shape; they do not guarantee semantic correctness or
+prevent actions exposed by the underlying agent. Research using tools, if later
+requested, is a separate operation with explicit permissions.
+
 Compatibility checklist, run only with explicit account-use approval and synthetic
 material:
 
 1. Record Codex/OS versions and an account-available model; verify saved auth without
    printing or copying credentials.
-2. Establish runtime restrictions preventing unrelated hooks, tools, skills, project
-   instructions, and configuration reads while preserving required security policy.
+2. Verify that the extraction invocation exposes no action tools or unrelated
+   hook/integration actions, preserving required security policy and ordinary user
+   development configuration. Inspect effective capabilities rather than requiring
+   every feature flag, instruction source, or configuration layer to be disabled.
 3. Run the tiny synthetic example twice sequentially; inspect structured output,
    usage visibility, temporary cleanup, and absence of tools or nested capture.
 4. Record observed limitations privately. If any restriction is unsupported, leave

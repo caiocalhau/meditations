@@ -50,10 +50,10 @@ python -m pip install .
 meditations --help
 ```
 
-Local verification currently uses Linux and Python 3.10.12. The CI matrix targets
-Linux/macOS on Python 3.10 and 3.14; the first slice passed that matrix.
-The new extraction changes still require their own CI run. Prefer a supported
-Python release for regular use.
+Local verification currently uses Linux and Python 3.10.12. The journal and manual
+extraction changes passed the Linux/macOS CI matrix on Python 3.10 and 3.14.
+Those checks do not verify live model execution. Prefer a supported Python release
+for regular use.
 
 Create a disposable example workspace outside the checkout:
 
@@ -149,11 +149,25 @@ See the [extraction contract](docs/architecture/extraction.md) and
 [synthetic evaluation set](evals/extraction/README.md). Evaluation annotations await
 owner review; no live semantic results or model comparison are claimed.
 
-## First-release scope
+## Delivery plan
 
-The MVP includes the complete learning loop. We will build it in stages, then improve it through everyday usage.
+The goal is a journal that helps you remember your work, revisit your reasoning,
+and write your own reflection. The complete learning workspace remains the vision;
+the first usable delivery focuses on an assisted journal.
 
-| Included in the MVP | What you should be able to do |
+| Delivery | Intended behavior |
+| --- | --- |
+| Assisted journal | Supply session material manually, obtain grounded daily Markdown, understand processing results, and add protected personal reflection |
+| Daily automation | Capture available activity and generate daily notes without routine commands, with recovery and safe synchronization |
+| Complete learning workspace | Receive integrated evidence-linked reviews, reviewed memory, contextual coaching, and continuity across sessions |
+
+The initial pilot still requires live extraction validation and journal usability
+review. You can manually supply selected notes to an external assistant for weekly
+or monthly feedback; Meditations does not yet implement those reviews.
+
+The complete vision includes:
+
+| Capability | What you should be able to do |
 | --- | --- |
 | Automatic Codex capture | Work normally while new activity is processed; pause recording or exclude projects when needed |
 | Daily Markdown journal | Read concise task sections, expand reasoning and evidence, and add a personal reflection that survives regeneration |
@@ -295,7 +309,10 @@ Assessments describe available evidence. They are not certifications of competen
 
 ## Development roadmap
 
-These are planned milestones, not completed features. All five belong to the MVP; a records-only demo is an intermediate development checkpoint:
+These are construction milestones, not release claims. Records/rendering and
+evaluated extraction support the assisted journal; capture and safe installation/
+synchronization support daily automation; context/coaching/reviews complete the
+learning workspace. A records-only demo remains an intermediate checkpoint:
 
 - [x] Local configuration, evidence records, and deterministic daily rendering (offline slice; broader presentation settings remain pending).
 - [ ] Evaluated extraction, configurable model roles, and usage reporting.
@@ -307,7 +324,7 @@ Future possibilities include additional agent and storage adapters, richer visua
 
 The priority is a reliable feedback loop before expanding integrations or adding progression mechanics.
 
-The [learning workspace architecture](docs/architecture/learning-workspace.md) documents the MVP scope, component boundaries, evidence contracts, recovery, privacy, and acceptance criteria. Temporary implementation plans and handoffs remain local. The open-source license remains to be selected before release.
+The [learning workspace architecture](docs/architecture/learning-workspace.md) documents delivery scope, component boundaries, evidence contracts, recovery, privacy, and acceptance criteria. Temporary implementation plans and handoffs remain local. The open-source license remains to be selected before release.
 
 ## Development
 
@@ -333,8 +350,8 @@ executes the tests on real Linux and macOS runners.
 Tests use temporary workspaces and synthetic evidence. Distribution artifacts
 include reusable source and public documentation; the local handoff, credentials,
 and user records must stay excluded. Notable changes are recorded in
-[CHANGELOG.md](CHANGELOG.md). CI is configured but its platform results remain
-unverified until run on GitHub.
+[CHANGELOG.md](CHANGELOG.md). The journal and manual extraction changes passed the
+GitHub CI matrix; live provider compatibility and semantic quality remain unverified.
 
 ## Contributing
 
