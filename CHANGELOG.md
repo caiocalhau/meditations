@@ -5,7 +5,8 @@ Notable changes are recorded here. Merging a change is not a release.
 ## [Unreleased]
 
 The initial offline journal slice is tracked in
-[#1](https://github.com/caiocalhau/meditations/pull/1).
+[#1](https://github.com/caiocalhau/meditations/pull/1). The manual extraction
+pipeline is tracked in [#2](https://github.com/caiocalhau/meditations/pull/2).
 
 ### Added
 
