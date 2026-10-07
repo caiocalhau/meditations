@@ -40,10 +40,10 @@ to its tag; later releases link to comparisons between consecutive release tags.
 Release numbers follow [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 Normal Python release metadata uses `X.Y.Z`; Git release tags use `vX.Y.Z`.
 
-Compatibility review covers documented CLI commands and options, configuration
-and evidence contracts, and persisted workspace data. Internal implementation
-details are not a promised public API. Record `schema_version` values describe
-data formats and are independent of the package version.
+Compatibility review covers documented helper commands/options, machine
+configuration, capture Markdown, generated-note boundaries, and the skill workflows.
+Internal implementation details are not a promised public API. Data `schema_version`
+values are independent of the package version.
 
 While the package is below `1.0.0`, interfaces are still developing. Our policy is
 to use patch releases for compatible fixes and minor releases for features or

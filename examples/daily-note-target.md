@@ -10,41 +10,33 @@ status: awaiting-personal-review
 Synthetic renderer example with fixed, source-cited content. No inference was used.
 
 <!-- meditations:generated:start -->
-<!-- meditations:template:journal-v3-editorial -->
-# Engineering journal — 2026-10-03
+<!-- meditations:sources:0000000000000000000000000000000000000000000000000000000000000000 -->
+<!-- meditations:template:daily-report-v1 -->
+# Daily report — 2026-10-03
 
 > Organized from the day's recorded work for reading and reflection. Assistant explanations and reported results do not establish independent mastery.
 
-## What changed today
+## The day at a glance
 
-- I identified a compatibility concern: older clients may still write during deployment.
-- Rollback needs validation before a migration strategy can be treated as complete.
+- Older clients may still write during deployment, so compatibility must be part of the migration plan.
+- Rollback remains unverified; a partial migration needs a disposable test before the approach is considered complete.
 
-## Decisions and reasoning to preserve
+## Work and outcomes
 
 ### Compatibility during deployment
 
-The central problem is preserving compatible writes while client versions overlap. The recorded concern does not establish that a migration strategy has been selected or implemented.
+The migration needs to support writes while old and new clients overlap. No migration approach was recorded as selected or implemented, so compatibility remains an open design constraint.
 
-| Question | Why it matters |
-| --- | --- |
-| Can older clients still write? | A deployment can temporarily have more than one client version. |
-| What happens after a partial migration? | Rollback must account for stages that have already completed. |
+### Rollback after a partial migration
 
-### Rollback needs a separate check
+Rollback needs to account for stages that have already completed. The next useful check is to create a disposable migration, interrupt it between stages, and inspect the resulting state after rollback.
 
-The assistant explained rollback considerations. The useful follow-up is to test a partially completed migration and inspect its state before and after rollback.
-
-1. Create a disposable migration scenario.
-2. Interrupt it between two stages.
-3. Run rollback and inspect the resulting state.
-
-## Still open / next steps
+## Where to resume
 
 - Choose a migration approach that supports overlapping client versions.
-- Validate rollback behavior in the disposable scenario.
+- Run the partial-migration rollback scenario and record what state remains.
 
-## Learning and reading
+## Study connected to the work
 
 ### Referential integrity
 
