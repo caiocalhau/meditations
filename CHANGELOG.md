@@ -12,7 +12,7 @@ versions and release preparation. Merging a change is not a release.
 ### Added
 
 - Private historical composition failure reports in dry-run and status, with
-  call counts, available composition usage, and evidence-match information.
+  call counts, available composition usage, and evidence-match information. ([#3])
 
 - Actionable composition resource diagnostics with field locations, redacted
   URLs, rejection reasons, source record IDs, and structured JSON error details.
@@ -21,7 +21,7 @@ versions and release preparation. Merging a change is not a release.
   filtering, and reading questions; old evidence records remain readable.
 
 - Source-cited whole-day composition with a canonical journal template, contextual
-  reflection questions, complete supporting evidence, and private cached receipts.
+  reflection questions, complete supporting evidence, and private cached receipts. ([#3])
 - Separate candidate output and stored-evidence composition through `journal
   --from-records --output`, preserving daily baselines and handwritten reflection.
 
@@ -44,7 +44,7 @@ versions and release preparation. Merging a change is not a release.
   rubric. ([#2])
 - Local Codex session discovery across all repositories by default, optional exact
   repository filters, session opt-outs, date filtering, text-only preview, bounded
-  extraction units, explicit daily processing, and readable run status.
+  extraction units, explicit daily processing, and readable run status. ([#3])
 - Per-invocation Codex runtime policy fingerprinting, capability switches, and a
   minimal child-process environment; live compatibility remains unverified.
 - English and Brazilian Portuguese generated note labels and extraction language.
@@ -105,3 +105,4 @@ versions and release preparation. Merging a change is not a release.
 [Unreleased]: https://github.com/caiocalhau/meditations/commits/main
 [#1]: https://github.com/caiocalhau/meditations/pull/1
 [#2]: https://github.com/caiocalhau/meditations/pull/2
+[#3]: https://github.com/caiocalhau/meditations/pull/3
