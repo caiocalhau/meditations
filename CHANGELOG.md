@@ -11,10 +11,10 @@ See the [versioning policy](docs/architecture/versioning.md). Merging a PR is no
 ### Added
 
 - Guided Linux/macOS installation with repeatable helper/skill registration,
-  machine-local configuration and GNU Stow bootstrap guidance.
+  machine-local configuration and GNU Stow bootstrap guidance. ([#4])
 - Explicit Codex skills for saving private session checkpoints and consolidating
   one date into a readable daily report, with a small Python helper for local
-  configuration, validation, formatting, and guarded note updates.
+  configuration, validation, formatting, and guarded note updates. ([#4])
 - Markdown checkpoints that preserve dated additions across sessions and can be
   synchronized through the user's existing vault workflow.
 
@@ -40,3 +40,4 @@ See the [versioning policy](docs/architecture/versioning.md). Merging a PR is no
 [#1]: https://github.com/caiocalhau/meditations/pull/1
 [#2]: https://github.com/caiocalhau/meditations/pull/2
 [#3]: https://github.com/caiocalhau/meditations/pull/3
+[#4]: https://github.com/caiocalhau/meditations/pull/4
