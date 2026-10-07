@@ -44,7 +44,9 @@ def extraction(workspace, tmp_path):
     return source, response, settings
 
 
-def run(workspace, extraction, provider, unit=None, settings=None):
+def run(
+    workspace, extraction, provider, unit=None, settings=None, automatic_revision=False
+):
     source, _, default = extraction
     return extract_unit(
         workspace,
@@ -52,6 +54,7 @@ def run(workspace, extraction, provider, unit=None, settings=None):
         unit or source.units[0],
         provider,
         settings or default,
+        automatic_revision=automatic_revision,
     )
 
 
@@ -157,8 +160,9 @@ def test_new_empty_revision_supersedes_without_deleting(workspace, extraction):
     assert select_active_records(workspace, load_records(workspace)) == []
 
 
+@pytest.mark.parametrize("automatic_revision", [False, True])
 def test_interrupt_recovery_uses_manifest_without_another_call(
-    workspace, extraction, monkeypatch
+    workspace, extraction, monkeypatch, automatic_revision
 ):
     from meditations.extraction import receipts
 
@@ -176,10 +180,10 @@ def test_interrupt_recovery_uses_manifest_without_another_call(
     with monkeypatch.context() as context:
         context.setattr(receipts, "atomic_write", interrupt)
         with pytest.raises(OSError):
-            run(workspace, extraction, provider)
+            run(workspace, extraction, provider, automatic_revision=automatic_revision)
     assert len(load_records(workspace)) == 1
     assert select_active_records(workspace, load_records(workspace)) == []
-    run(workspace, extraction, provider)
+    run(workspace, extraction, provider, automatic_revision=automatic_revision)
     assert len(select_active_records(workspace, load_records(workspace))) == 1
     assert len(provider.requests) == 1
     assert not list((workspace / "extractions").glob("*.pending.json"))
@@ -231,6 +235,23 @@ def test_privacy_settings_change_invalidates_same_revision(workspace, extraction
     )
     with pytest.raises(ValueError, match="revision"):
         run(workspace, extraction, provider, settings=changed)
+    assert len(provider.requests) == 1
+
+
+def test_language_setting_is_sent_to_provider_and_changes_extractor_identity(
+    workspace, extraction
+):
+    _, response, settings = extraction
+    provider = FakeProvider([response])
+    portuguese = ExtractionSettings(
+        model=settings.model,
+        state_directory=settings.state_directory,
+        language="pt-BR",
+    )
+    run(workspace, extraction, provider, settings=portuguese)
+    assert provider.requests[0].language == "pt-BR"
+    with pytest.raises(ValueError, match="revision"):
+        run(workspace, extraction, provider, settings=settings)
     assert len(provider.requests) == 1
 
 
@@ -297,3 +318,62 @@ def test_direct_service_rejects_oversized_effective_unit(workspace, extraction):
     with pytest.raises(ValueError, match="byte limit"):
         run(workspace, extraction, provider, unit)
     assert provider.requests == []
+
+
+def test_source_validation_reason_guides_repair(workspace, extraction):
+    from meditations.extraction.prompt import request_payload
+
+    _, response, _ = extraction
+    invalid = response.model_copy(update={"excluded_message_ids": []})
+    provider = FakeProvider([invalid, response])
+    result = run(workspace, extraction, provider)
+    assert result.created == 1
+    assert provider.requests[1].repair_reason == "Invalid or incomplete source coverage"
+    assert "Invalid or incomplete source coverage" in request_payload(
+        provider.requests[1]
+    )
+
+
+def test_final_source_validation_failure_is_explained_without_source_text(
+    workspace, extraction
+):
+    _, response, _ = extraction
+    invalid = response.model_copy(update={"excluded_message_ids": []})
+    result = run(workspace, extraction, FakeProvider([invalid, invalid]))
+    assert result.failure_detail == "Invalid or incomplete source coverage"
+    assert load_records(workspace) == []
+
+
+def test_quoted_artifact_role_failure_identifies_candidate_for_repair(
+    workspace, extraction
+):
+    from meditations.extraction.prompt import request_payload
+
+    _, response, _ = extraction
+    candidate = response.candidates[0].model_copy(
+        update={"attribution": "observed artifact"}
+    )
+    invalid = response.model_copy(update={"candidates": [candidate]})
+    provider = FakeProvider([invalid, response])
+    result = run(workspace, extraction, provider)
+    assert result.created == 1
+    reason = provider.requests[1].repair_reason
+    assert "candidate 0" in reason
+    assert "source role user" in reason
+    assert "Pasted notes" in request_payload(provider.requests[1])
+
+
+def test_schema_failure_has_safe_explanation(workspace, extraction):
+    result = run(
+        workspace,
+        extraction,
+        FakeProvider([ProviderError("validation"), ProviderError("validation")]),
+    )
+    assert result.failure_detail == "Output does not match the required JSON schema"
+
+
+def test_initial_attempt_has_no_repair_reason(workspace, extraction):
+    _, response, _ = extraction
+    provider = FakeProvider([response])
+    run(workspace, extraction, provider)
+    assert provider.requests[0].repair_reason is None

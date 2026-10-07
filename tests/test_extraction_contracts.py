@@ -219,3 +219,60 @@ def test_zero_relevance_and_earlier_context_are_valid(workspace, conversation_da
         )
         == []
     )
+
+
+def test_study_resource_must_appear_in_cited_source(workspace):
+    from pathlib import Path
+
+    from meditations.config import load_workspace
+    from meditations.extraction.contracts import ExtractionResponse
+    from meditations.extraction.validation import validate_input, validate_response
+    from meditations.records import StudyResource
+
+    fixtures = Path(__file__).parent / "fixtures/extraction"
+    source = validate_input(
+        (fixtures / "conversation.json").read_bytes(), load_workspace(workspace)
+    )
+    response = ExtractionResponse.model_validate_json(
+        (fixtures / "response.json").read_bytes()
+    )
+    resource = StudyResource(
+        title="Migration guide", url="https://example.org/migrations"
+    )
+    candidate = response.candidates[0].model_copy(update={"resources": [resource]})
+    result = response.model_copy(update={"candidates": [candidate]})
+    with pytest.raises(ValueError, match="resource"):
+        validate_response(result, source.units[0])
+    unit = source.units[0]
+    message = unit.messages[0].model_copy(
+        update={
+            "content": unit.messages[0].content
+            + " [Read](https://example.org/migrations)."
+        }
+    )
+    validate_response(
+        result, unit.model_copy(update={"messages": [message, *unit.messages[1:]]})
+    )
+
+
+def test_wire_schema_requires_defaulted_fields_without_breaking_old_data():
+    from meditations.composition import CompositionResponse
+    from meditations.extraction.contracts import output_schema
+
+    schema = output_schema(CompositionResponse)
+    topic = schema["$defs"]["JournalTopic"]
+    assert set(topic["required"]) == set(topic["properties"])
+    assert "default" not in topic["properties"]["table"]
+
+
+def test_study_urls_reject_credentials_and_local_addresses():
+    from meditations.records import StudyResource
+
+    for url in (
+        "file:///tmp/notes",
+        "https://user:secret@example.org",
+        "http://127.0.0.1/docs",
+        "https://wiki.internal/docs",
+    ):
+        with pytest.raises(ValueError):
+            StudyResource(title="Guide", url=url)

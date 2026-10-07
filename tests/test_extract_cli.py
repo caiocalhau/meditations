@@ -1,9 +1,12 @@
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
 from meditations.cli import main
+from meditations.extraction.cli import reviewed_provider
+from meditations.extraction.codex_exec import runtime_policy_fingerprint
 from meditations.extraction.contracts import ExtractionResponse, Usage
 from meditations.extraction.provider import ProviderResult
 from meditations.store import load_records
@@ -47,12 +50,66 @@ def test_show_payload_requires_preview_and_is_explicit(workspace, capsys):
     assert "preview" in capsys.readouterr().err
 
 
-def test_live_requires_model_and_reviewed_runtime(workspace, capsys):
+def test_live_requires_model_and_reviewed_runtime(
+    workspace, capsys, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
     assert main(args(workspace, "--run-model")) == 1
     assert "model" in capsys.readouterr().err
     assert main(args(workspace, "--run-model", "--model", "synthetic")) == 1
     assert "runtime" in capsys.readouterr().err
     assert load_records(workspace) == []
+
+
+def test_dry_run_and_default_extract_mode(workspace, capsys, tmp_path, monkeypatch):
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    before = {
+        path: path.read_bytes() for path in workspace.rglob("*") if path.is_file()
+    }
+    assert main(args(workspace, "--dry-run")) == 0
+    assert json.loads(capsys.readouterr().out)["mode"] == "preview"
+    assert main(args(workspace)) == 1
+    assert "model" in capsys.readouterr().err
+    assert main(args(workspace, "--model", "synthetic")) == 1
+    assert "runtime" in capsys.readouterr().err
+    assert before == {
+        path: path.read_bytes() for path in workspace.rglob("*") if path.is_file()
+    }
+
+
+def test_runtime_approval_binds_executable_policy_and_model(tmp_path, monkeypatch):
+    executable = tmp_path / "codex"
+    executable.write_text("synthetic codex executable")
+    executable.chmod(0o700)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    approval_path = tmp_path / "approval.json"
+    approval_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "executable_sha256": hashlib.sha256(
+                    executable.read_bytes()
+                ).hexdigest(),
+                "runtime_policy_sha256": runtime_policy_fingerprint(),
+                "models": ["synthetic"],
+                "isolation_reviewed": True,
+            }
+        )
+    )
+
+    assert reviewed_provider(approval_path, ["synthetic"]).runtime_reviewed
+
+    approval = json.loads(approval_path.read_text())
+    approval["schema_version"] = 1
+    approval_path.write_text(json.dumps(approval))
+    with pytest.raises(ValueError, match="Invalid runtime approval"):
+        reviewed_provider(approval_path, ["synthetic"])
+
+    approval["schema_version"] = 2
+    approval["runtime_policy_sha256"] = "0" * 64
+    approval_path.write_text(json.dumps(approval))
+    with pytest.raises(ValueError, match="policy"):
+        reviewed_provider(approval_path, ["synthetic"])
 
 
 @pytest.mark.parametrize(

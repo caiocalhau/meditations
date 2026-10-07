@@ -18,6 +18,8 @@ class ExtractionRequest:
     timeout_seconds: float = 180
     output_limit_bytes: int = 2 * 1024 * 1024
     repair: bool = False
+    repair_reason: str | None = None
+    language: str = "en"
 
 
 @dataclass(frozen=True)

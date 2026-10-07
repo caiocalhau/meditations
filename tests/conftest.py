@@ -6,6 +6,13 @@ import pytest
 from meditations.config import initialize_workspace
 
 
+@pytest.fixture(autouse=True)
+def isolated_machine_settings(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "machine-settings"))
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
+
+
 @pytest.fixture
 def workspace(tmp_path):
     initialize_workspace(tmp_path, "America/Sao_Paulo")

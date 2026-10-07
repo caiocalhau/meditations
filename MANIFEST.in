@@ -1,4 +1,5 @@
 include README.md CHANGELOG.md AGENTS.md requirements-dev.txt
+include docs/installation.md
 recursive-include docs/architecture *.md
 recursive-include examples *.jsonl *.json *.md
 recursive-include tests *.py *.jsonl *.json
