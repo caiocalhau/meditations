@@ -26,6 +26,21 @@ def test_conflicting_initialization_does_not_reset_config(tmp_path):
     assert (tmp_path / "workspace.json").read_bytes() == before
 
 
+def test_workspace_language_can_be_selected_and_existing_value_is_preserved(tmp_path):
+    config = initialize_workspace(tmp_path, "UTC", "pt-BR")
+    assert config.language == "pt-BR"
+    assert initialize_workspace(tmp_path, "UTC").language == "pt-BR"
+    with pytest.raises(ValueError, match="language"):
+        initialize_workspace(tmp_path, "UTC", "en")
+
+
+def test_legacy_workspace_without_language_defaults_to_english(tmp_path):
+    (tmp_path / "workspace.json").write_text(
+        '{"schema_version":1,"workspace_id":"00000000-0000-0000-0000-000000000001","timezone":"UTC"}'
+    )
+    assert load_workspace(tmp_path).language == "en"
+
+
 def test_invalid_timezone_creates_no_workspace(tmp_path):
     workspace = tmp_path / "missing"
     with pytest.raises(ValueError):

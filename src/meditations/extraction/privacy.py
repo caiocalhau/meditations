@@ -88,6 +88,13 @@ def filter_response(
             )
             updates[name] = replacement
             changed |= replacement != value
+        resources = [
+            resource.model_copy(update={"title": filter_text(resource.title, settings)})
+            for resource in candidate.resources
+            if filter_text(resource.url, settings) == resource.url
+        ]
+        updates["resources"] = resources
+        changed |= resources != candidate.resources
         if changed:
             updates["privacy_omissions"] = [
                 *[

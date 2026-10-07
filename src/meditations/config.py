@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Literal
 from uuid import UUID, uuid4
@@ -19,8 +20,16 @@ class WorkspaceConfig(BaseModel):
     schema_version: Literal[1]
     workspace_id: UUID
     timezone: str
-    language: Literal["en"] = "en"
+    language: Literal["en", "pt-BR"] = "en"
+    excluded_session_ids: list[str] = Field(default_factory=list)
     presentation: PresentationSettings = Field(default_factory=PresentationSettings)
+
+    @field_validator("excluded_session_ids")
+    @classmethod
+    def valid_session_exclusions(cls, values: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"[A-Za-z0-9._:-]{1,200}", value) for value in values):
+            raise ValueError("Use valid opaque session IDs for exclusions")
+        return values
 
     @field_validator("timezone")
     @classmethod
@@ -56,9 +65,16 @@ def load_workspace(path: Path) -> WorkspaceConfig:
         ) from error
 
 
-def initialize_workspace(path: Path, timezone: str) -> WorkspaceConfig:
+def initialize_workspace(
+    path: Path, timezone: str, language: Literal["en", "pt-BR"] | None = None
+) -> WorkspaceConfig:
     path = validate_workspace_path(path)
-    config = WorkspaceConfig(schema_version=1, workspace_id=uuid4(), timezone=timezone)
+    config = WorkspaceConfig(
+        schema_version=1,
+        workspace_id=uuid4(),
+        timezone=timezone,
+        language=language or "en",
+    )
     config_path = path / "workspace.json"
     directories = (
         "profile",
@@ -74,6 +90,8 @@ def initialize_workspace(path: Path, timezone: str) -> WorkspaceConfig:
             config = load_workspace(path)
             if config.timezone != timezone:
                 raise ValueError("Workspace already uses a different timezone")
+            if language is not None and config.language != language:
+                raise ValueError("Workspace already uses a different language")
         for relative in directories:
             target = workspace_directory(path, relative)
             for part in (target, *target.parents):

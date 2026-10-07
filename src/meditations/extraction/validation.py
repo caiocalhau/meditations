@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from uuid import UUID, uuid5
 from zoneinfo import ZoneInfo
@@ -91,7 +92,7 @@ def validate_response(response: ExtractionResponse, unit: ConversationUnit) -> N
         "agent explanation": "assistant",
         "observed artifact": "tool",
     }
-    for candidate in response.candidates:
+    for index, candidate in enumerate(response.candidates):
         refs = set(candidate.source_message_ids)
         key = (candidate.primary_message_id, candidate.attribution)
         if (
@@ -103,12 +104,26 @@ def validate_response(response: ExtractionResponse, unit: ConversationUnit) -> N
         ):
             raise ValueError("Invalid candidate source references")
         if messages[candidate.primary_message_id].role != roles[candidate.attribution]:
-            raise ValueError("Candidate attribution does not match source role")
+            raise ValueError(
+                "Candidate attribution does not match source role: "
+                f"candidate {index}, source role "
+                f"{messages[candidate.primary_message_id].role}. "
+                "Use user contribution or user self-report for user messages, "
+                "agent explanation for assistant messages, and observed artifact "
+                "only for tool messages."
+            )
         if (
             candidate.attribution == "agent explanation"
             and candidate.assistance == "independent"
         ):
             raise ValueError("Agent explanation cannot establish independence")
+        source_urls = {
+            url.rstrip(".,;:!?)]")
+            for ref in refs
+            for url in re.findall(r"https?://[^\s<>\"`]+", messages[ref].content)
+        }
+        if any(resource.url not in source_urls for resource in candidate.resources):
+            raise ValueError("Study resource URL is absent from cited source text")
         keys.add(key)
         covered.update(refs & relevant)
     excluded = set(response.excluded_message_ids)

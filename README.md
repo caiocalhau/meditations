@@ -4,7 +4,7 @@ Turn everyday AI-assisted work into a clearer understanding of what you know, wh
 
 This project is a personal engineering journal and development workspace. Its intended workflow captures learning evidence from connected AI sessions, organizes it into concise daily notes, and uses that history to support reflection, focused practice, and continuity across sessions.
 
-**Status:** offline journal and manual extraction pipeline. Conversation preview, validation, recoverable receipts, and an offline-tested Codex adapter are implemented. Live Codex extraction remains gated on runtime compatibility/isolation and human-reviewed evaluations. Automatic capture, coaching, context retrieval, and weekly/monthly reviews are still planned. The full MVP is not complete and no release has been published. The project name is still being decided.
+**Status:** assisted journal CLI with Codex transcript preview, bounded text selection, validation, recoverable receipts, and a restricted Codex adapter. A single Linux runtime has passed a manual compatibility smoke review; live activation still requires per-machine review and a private approval record. Broader semantic evaluations and macOS live verification remain pending. Automatic capture, coaching, context retrieval, and weekly/monthly reviews are still planned. The full MVP is not complete and no release has been published. The project name is still being decided.
 
 ## Why I’m building this
 
@@ -36,12 +36,17 @@ The intended cycle is:
 
 ## Try the offline journal
 
-The journal commands initialize a private directory, import normalized synthetic
-evidence, renders daily Markdown, and reports record counts and note conflicts.
-These journal commands do not read Codex history or call a model. Reimporting identical evidence is
+The `init`, `import-records`, `render`, and `status` commands manage a private
+directory and normalized evidence. The `journal` command can read saved Codex
+session transcripts locally for an explicitly selected date across all local
+repositories, with session exclusions and optional repository filters. Preview
+does not call a model or write to the workspace. Reimporting identical evidence is
 safe; conflicting identities are reported instead of silently replaced.
 
 From this checkout, use Python >=3.10 on Linux/macOS:
+
+See the [installation and live setup guide](docs/installation.md) for saved login,
+machine defaults, runtime review, missing approval files, and repeated daily runs.
 
 ```bash
 python3 -m venv .venv
@@ -84,6 +89,65 @@ Import reports `{"created": 3, "unchanged": 0}`; running it again reports
 `2026-10-04.md`, connected by task links. No login or inference is required.
 The [sample daily note](examples/daily-note.md) shows the synthetic output.
 
+Offline rendering without a current composition separates a short reading view
+from complete supporting evidence.
+The overview shows at most five tasks, using a recent summary with decisions or
+results when available. Each task highlights at most five distinct recorded
+decisions, results, and verification entries, with attribution and links to their
+evidence. These entries are historical reports, not an inferred final task status.
+Learning topics show up to five frequently recorded concepts. Generic reflection
+questions help you start your own writing; they do not assess mastery.
+
+Expand a task's evidence section to see every active record, including full
+summaries, reasoning, alternatives, uncertainties, provenance, and omitted details
+from the short view. Technical caveats are retained there rather than repeated as
+an unbounded list of open questions. This is deterministic selection and formatting
+of stored evidence, not an additional model-generated thematic synthesis or study
+resource search. Reformatting stored records needs no inference.
+
+Live `journal` adds a daily composition step over **all active evidence** for the
+date. The [daily journal template](docs/architecture/daily-note-template.md) follows
+an editorial structure: YAML metadata, one introduction, a brief overview, topical
+reasoning, open issues, guided study, specific reflection questions, and protected
+personal writing. Topics can use paragraphs, bullets, steps and comparison tables.
+Record IDs, attribution fields and record-by-record dumps stay in private JSON.
+Internal source citations are validated and retained in composition receipts;
+they do not establish that an interpretation is correct.
+
+Known limitation: related-day navigation uses dates present in stored evidence.
+It can skip existing handwritten notes and link to an older day. Selecting the
+most recent related existing note remains a follow-up fix.
+
+Extraction can retain public study URLs appearing exactly in cited source text.
+Composition can use those recorded resources with explanations and reading questions;
+it does not browse, invent links, or claim to have verified them. Older records with
+no resources need transcript re-extraction to recover discarded links. The
+[synthetic example](examples/daily-note-target.md) illustrates the delivered structure.
+
+Composition uses the same restricted Codex transport, with one additional call
+per changed evidence/settings fingerprint, a 64 KiB complete submitted-text limit,
+and a 180-second timeout. Oversized or invalid composition preserves the previous
+note. `compositions/` stores private immutable receipts keyed by evidence, locale,
+model, prompt/schema, and privacy settings. A private `.selected` file lets offline
+rendering retain the most recently selected settings, including cache hits.
+Unchanged repeated generation reuses
+its composition without inference; formatting-only changes reuse it too. Concurrent
+runs may consume duplicate calls, though publication is checked under a local lock.
+Offline `render` reuses a current composition; it refuses to replace an existing
+thematic note with an evidence-only fallback when that composition is stale.
+
+To test a template against stored evidence without changing the daily baseline:
+
+```bash
+meditations journal --date 2026-10-06 --from-records \
+  --output "$HOME/meditations-preview/2026-10-06-candidate.md"
+```
+
+`--from-records` skips transcripts and extraction. `--output` writes a separate
+private Markdown candidate, copying protected handwritten text from the baseline.
+Use a destination outside the public checkout and managed daily/JSON directories.
+This can perform composition inference; `--dry-run` still performs no calls or writes.
+
 Read those notes in your editor. Add reflection below the generated block and
 rerun `render`; your text is preserved. Text inside the generated block is replaced.
 Notes without exactly one valid pair of markers are left untouched and reported
@@ -91,7 +155,8 @@ as conflicts. Keep personal edits outside that block. Once finished, you can rem
 the disposable directory printed by `echo "$MEDITATIONS_DEMO_DIR"`.
 
 Configuration is stored in `workspace.json`; records are individual JSON files.
-The first slice supports English, portable Markdown links, and HTML details.
+Generated notes support English (default) and Brazilian Portuguese using
+`init --language pt-BR`, alongside Markdown callouts and Obsidian block-reference links.
 Other presentation settings remain part of the full MVP. Source revisions must
 use distinct record UUIDs; earlier revisions remain stored but only the latest
 contributes to notes. Correct records by importing a new revision rather than
@@ -106,13 +171,177 @@ capture are still pending.
 
 ```bash
 meditations extract --workspace "$MEDITATIONS_DEMO_DIR/notes" \
-  --input examples/conversation.json --preview
+  --input examples/conversation.json --dry-run
 ```
 
 Preview makes no model call or writes. Add `--show-payload` only when you want the
 submitted source and initial instructions printed to your terminal. Missing source
 times require an explicit `--occurred-at '2026-10-03T12:00:00-03:00'` override;
 records disclose that the original time is unavailable.
+
+## Configure a default vault on each machine
+
+After initializing a private workspace, select it once on each machine:
+
+```bash
+meditations configure --workspace "/path/to/your/vault"
+```
+
+This saves the resolved absolute path in machine-local settings and leaves the
+vault unchanged. The default settings file is `~/.config/meditations/config.json`
+on Linux (`$XDG_CONFIG_HOME/meditations/config.json` when set), or
+`~/Library/Application Support/meditations/config.json` on macOS. Keep this file
+local: the same synchronized vault can have different paths on different machines.
+It contains the default workspace and optional runtime approval paths, not
+credentials or the approval record itself.
+
+Save the approval record's location once, either alongside `--workspace` during
+setup or separately after selecting a vault:
+
+```bash
+meditations configure --runtime-approval "$HOME/.config/meditations/runtime-approval.json"
+meditations journal --date 2026-10-06
+```
+
+The path is expanded and saved as an absolute path. The file can be created after
+configuration; saving its location does not create or approve it. Live processing
+still validates the record on each run. `--runtime-approval PATH` on `journal` or
+`extract` overrides the saved location without updating it. Changing the workspace
+preserves the approval path; changing the approval path preserves the workspace.
+Existing machine configurations without this setting continue to work with an
+explicit runtime approval option. Dry runs do not validate an approval record.
+
+Other commands can now omit `--workspace`, including daily processing, dry runs,
+rendering, imports, and status. An explicit `--workspace` overrides the default for
+that command without changing it. Run `configure` again to select another default.
+Without a valid configured default, pass `--workspace` explicitly; the CLI never
+chooses the current directory as a vault automatically.
+
+```bash
+meditations journal --date 2026-10-06 --dry-run
+meditations status
+```
+
+Initial setup still needs an explicit path for `init` when no default exists.
+`configure` validates an already initialized workspace; it does not create one or
+activate model execution. Live daily processing uses the global Codex model by
+default, supports `--model` as an override, and still requires a runtime approval.
+
+The default model is the top-level `model` setting in `$CODEX_HOME/config.toml`
+or `~/.codex/config.toml`. Meditations reads that value separately and passes it
+to the restricted child process; it does not import other personal settings or
+resolve project/profile model overrides. Missing or invalid model settings produce
+an actionable error; explicit `--model` bypasses this lookup. Dry runs do not need
+a model. Python 3.11+ uses the standard TOML parser. Python 3.10 uses `tomli`, which
+is currently pinned in the development environment; promoting it to the runtime
+dependencies remains pending approval.
+
+## Create or update a day from Codex sessions
+
+This command discovers root Codex session JSONL files under `$CODEX_HOME/sessions`
+or `~/.codex/sessions`. By default it selects supported sessions across all local
+repositories, using message event timestamps in the workspace timezone. A session
+started on an earlier date can contribute to the selected day after it is resumed.
+This reads saved conversations, not repository files. Only sessions available on
+this machine can be selected; scheduling and automatic cross-machine collection
+remain pending.
+
+```bash
+meditations journal --workspace "$MEDITATIONS_DEMO_DIR/notes" \
+  --date 2026-10-06 --dry-run
+```
+
+Optionally repeat `--repo /path/to/project` to narrow the selection. Each filter
+must match the session's resolved working directory exactly; subdirectories and
+similar-looking names are not implicitly included. No repository filter is needed
+for the default daily journal, including sessions from directories no longer present.
+
+To opt a session out of future processing, add its ID (shown in preview) to the
+private `workspace.json` configuration's `excluded_session_ids` list. Existing
+workspaces without the field default to an empty list. For example, add this field
+alongside the existing workspace identity, timezone, and other settings:
+
+```json
+"excluded_session_ids": ["session-id-to-skip"]
+```
+
+Repeat `--exclude-session SESSION_ID` for additional exclusions on one invocation.
+Both lists apply even when `--repo` narrows the selection. Excluded session bodies
+are skipped before processing. Exclusions prevent future processing; they do not
+erase evidence or notes already generated. Subagents and Meditations extraction
+sessions remain excluded automatically.
+
+Preview reports selected session/message/unit counts, omissions, and coverage
+warnings without printing conversation text. Add `--show-payload` to inspect the
+filtered text that would be sent. `--sessions-dir` can point to a different local
+Codex session directory; it does not change authentication. Use `--json` for
+machine-readable output. `init --language pt-BR` selects Brazilian Portuguese for
+generated labels and model output; existing workspaces keep their configured
+language unless an explicit conflicting value is supplied.
+
+The reader supports root session metadata plus timestamped `response_item` text
+messages and textual function/custom tool outputs. It ignores mirrored event
+messages, instructions, reasoning, images, and tool invocation objects. A selected
+transcript is limited to 64 MiB and parsed lines to 2 MiB. Larger entries are
+skipped with an `oversized_line` omission and a coverage warning; their date, type
+and content remain unknown. Later messages retain their original source line IDs.
+A malformed complete line within the limit fails selection, while an incomplete
+final line is omitted with a coverage warning. A changing or truncated transcript
+asks you to retry. The initial adapter
+uses the JSONL shape observed with Codex CLI 0.160.0; other versions are reported
+but are not guaranteed to have complete coverage. Extraction units are limited to
+64 KiB and 200 messages; `--max-units` defaults to 10. Preview shows when the
+selected batch exceeds that run limit. A current-day session's earlier messages
+are not added as context.
+
+Without `--dry-run`, the command processes the selected day using the global Codex
+model (or a `--model` override) and a private runtime approval file. This path sends
+selected text to the
+model service and writes validated evidence plus the requested daily note. It stops
+on the first failed unit, reports partial progress, and does not render an
+incomplete day. The CLI compares source and extraction settings to stored receipts,
+reuses unchanged units, and automatically advances internal revisions for changed
+units. No manual `--revision` is needed. Per-machine review remains required; follow the
+[extraction compatibility gate](docs/architecture/extraction.md) before any live
+use. Once that gate has been completed and separately approved, the command shape is:
+
+```bash
+meditations journal --workspace "$MEDITATIONS_DEMO_DIR/notes" \
+  --date 2026-10-06 \
+  --runtime-approval "$HOME/.config/meditations/runtime-approval.json"
+```
+
+Existing manually composed Obsidian pilot notes are not adopted automatically.
+Notes without valid generated markers are preserved and reported as conflicts; use
+a separate pilot workspace or an unused date when first validating generation. A
+preview does not prove that every activity from the day was captured.
+
+### Repeated runs and multiple machines
+
+The daily note is a view of the private evidence store. Repeating an unchanged
+session/day material with the same extraction settings reuses its receipt, makes
+no new model call, and preserves handwritten reflection. New activity or changed
+settings receives a new internal revision automatically. The generated section
+combines active evidence from all sessions; a changed unit replaces its earlier
+version rather than appending duplicate summaries. Historical records remain stored.
+If the note is missing, available evidence creates it, even when its original
+transcripts are no longer on this machine. No relevant source or stored evidence
+means no new note, with a visible `no-evidence` result.
+
+For sequential work/home runs, synchronize the same private workspace, including
+`workspace.json`, `records/`, `extractions/`, `compositions/`, and `engineering/`. After the work
+run, sync to home before processing the home machine's sessions. The renderer
+then combines both machines' available evidence into the same daily note. Sync
+the result before running again on the other machine. Raw Codex transcripts,
+credentials, runtime approval files, and machine-local installation state do not
+need to be synchronized. Keep this private workspace separate from the public
+software repository.
+
+Synchronizing only Markdown is insufficient: regenerating the generated section
+from an incomplete local evidence store can remove another machine's contribution.
+Receipts without their referenced records cause an error. Concurrent runs or Git
+merges can produce conflicts; automated synchronization and conflict reconciliation
+are not implemented. The CLI does not fetch, commit, or push the vault.
 
 Try the full pipeline with a fixed synthetic provider, without login/inference:
 
@@ -126,10 +355,12 @@ The resulting `engineering/daily/2026-10-03.md` contains one finding. Repeating
 this demo reuses its receipt and evidence. This verifies integration, not model
 quality. Inspect the temporary directory before removing it manually.
 
-Real model execution additionally requires `--run-model --model '<approved-model>'`
-and a private `--runtime-approval` capability record. **Live compatibility and
-isolation have not been verified; do not activate it before completing the
-[documented gate](docs/architecture/extraction.md).** A runtime approval is an
+Real model execution additionally requires an available global Codex model or a
+`--model '<approved-model>'` override, and a private `--runtime-approval` capability
+record. A Linux compatibility smoke review has been completed for one development
+setup; other installations still need the
+[documented gate](docs/architecture/extraction.md). Broader semantic evaluations
+and macOS live verification remain pending. A runtime approval is an
 operator attestation, not a sandbox. Login does not imply unlimited usage.
 
 Known sensitive literals can be supplied through a private JSON-list
@@ -139,7 +370,9 @@ in extraction receipts. Provider inference sends selected material off the machi
 
 Extraction stores supported evidence and reports unresolved messages. Run
 `meditations render` separately after inspecting its status. Reusing identical
-input/settings makes no model call; changes require a higher source revision.
+input/settings makes no model call. The daily `journal` command manages revisions
+automatically; the lower-level `extract --input` command still validates the source
+revisions declared in its normalized input file.
 An empty new revision can supersede older findings while preserving history.
 Interrupted record publication can resume without another model call. There are at
 most two attempts per unit, with no automatic retry for authentication, refusal,
@@ -148,6 +381,31 @@ rate limits, timeout, or incomplete output.
 See the [extraction contract](docs/architecture/extraction.md) and
 [synthetic evaluation set](evals/extraction/README.md). Evaluation annotations await
 owner review; no live semantic results or model comparison are claimed.
+
+## Command reference
+
+```bash
+meditations --help
+meditations journal --help
+```
+
+| Command | Purpose |
+| --- | --- |
+| `init` | Initialize the private workspace |
+| `configure --workspace /path/to/vault` | Save this machine's default workspace |
+| `configure --runtime-approval /path/to/record.json` | Save this machine's runtime approval location |
+| `journal` | Process local sessions and create or update the selected daily note |
+| `journal --dry-run` | Preview session selection without model calls or writes |
+| `extract` | Process an explicitly supplied normalized conversation into evidence |
+| `extract --dry-run` | Preview that normalized input without model calls or writes |
+| `import-records` | Import already normalized evidence |
+| `render` | Reuse current cached composition or format evidence offline |
+| `status` | Inspect record counts and note conflicts |
+
+The installed `meditations` executable is registered in [pyproject.toml](pyproject.toml).
+Command routing lives in [cli.py](src/meditations/cli.py); the daily command and its
+arguments live in [journal.py](src/meditations/journal.py).
+Machine-local defaults live in [machine_config.py](src/meditations/machine_config.py).
 
 ## Delivery plan
 
@@ -160,6 +418,49 @@ the first usable delivery focuses on an assisted journal.
 | Assisted journal | Supply session material manually, obtain grounded daily Markdown, understand processing results, and add protected personal reflection |
 | Daily automation | Capture available activity and generate daily notes without routine commands, with recovery and safe synchronization |
 | Complete learning workspace | Receive integrated evidence-linked reviews, reviewed memory, contextual coaching, and continuity across sessions |
+
+If extraction fails validation, the run keeps the existing note and reports the
+application-generated rejection reason. Its single repair attempt receives that
+reason; pasted notes and terminal output retain user-report attribution.
+Composition resource failures identify the learning/resource field, a redacted URL,
+and whether the URL is duplicated, absent from evidence, or present only outside
+that learning item's explanation citations. Relevant record IDs and a URL
+fingerprint help locate the mismatch; `--json` exposes these fields under
+`composition_error`. Credentials, query strings, fragments, invalid URLs and
+control characters are withheld from resource diagnostics. Failed responses are
+not saved as valid compositions. These diagnostics do not recover the rejected
+URL from an earlier run that only reported the generic error.
+
+Composition failures now save a private, bounded report in
+`diagnostics/composition/YYYY-MM-DD.json`: the latest failure for that day,
+its timestamp, evidence fingerprint, call counts, redacted details, and available
+composition usage. `status` lists these reports; dry-run shows the selected day's
+report as historical and indicates whether its evidence still matches. Reports
+are retained after successful runs as historical information, not a verdict on
+the next run. Previous failures from versions without reporting cannot be recovered.
+No raw conversation or rejected full model response is saved in the report.
+
+For inspection without inference or writes:
+
+```bash
+meditations journal --date 2026-10-06 --from-records --dry-run
+meditations status
+```
+
+Dry-run shows extraction payload bytes, current stored composition bytes and the
+64 KiB limit. Byte counts exclude runtime-added context and are not token or
+subscription-quota estimates. Maximum attempts is a pessimistic bound before
+receipt reuse. Composition uses compact JSON without dropping fields or values.
+Normal runs stop before extraction when the current filtered stored evidence
+already exceeds the composition limit. Updated extraction can still grow a day
+past the limit; that is checked again before composition inference. Resolving an
+already oversized day requires changing the composition budget strategy or
+explicitly revising evidence; repeating the same run will not resolve it.
+Unchanged completed extraction receipts are reused; changed units are re-extracted
+in full, and composition processes the full active day's evidence. Repeated runs
+while a session is growing can therefore incur substantial calls. Extraction has
+at most one repair attempt per unit; composition has no automatic retry. A stored
+failure report is informational and does not trigger inference or automatic retry.
 
 The initial pilot still requires live extraction validation and journal usability
 review. You can manually supply selected notes to an external assistant for weekly
@@ -291,7 +592,8 @@ Skills guide the agent’s workflow; they do not independently provide schedulin
 | Weekly and monthly assessment | A more capable model |
 | Selected extraction failures or ambiguities | Bounded repair or escalation when justified |
 
-Process new material incrementally instead of repeatedly summarizing the full history. Avoid an additional daily model call when the extracted records can be rendered directly.
+Process new material incrementally instead of repeatedly summarizing the full history. Reuse cached daily composition when its evidence and settings are unchanged.
+Deterministic rendering remains available without inference.
 
 Model selection should follow evaluations of attribution, conceptual completeness, topic boundaries, and uncertainty—not just fluent prose. Usage and latency should be measured. A stronger review model cannot recover evidence that extraction discarded.
 

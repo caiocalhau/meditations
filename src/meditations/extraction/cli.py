@@ -11,8 +11,12 @@ from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints, TypeAdapter, ValidationError
 
+from meditations.codex_config import resolve_model
 from meditations.config import load_workspace
-from meditations.extraction.codex_exec import CodexExecProvider
+from meditations.extraction.codex_exec import (
+    CodexExecProvider,
+    runtime_policy_fingerprint,
+)
 from meditations.extraction.contracts import Contract
 from meditations.extraction.privacy import (
     FilteringProvider,
@@ -31,8 +35,9 @@ from meditations.records import Text
 
 
 class RuntimeApproval(Contract):
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     executable_sha256: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    runtime_policy_sha256: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
     models: list[Text]
     isolation_reviewed: Annotated[bool, Field(strict=True)]
 
@@ -43,12 +48,18 @@ def add_extract_command(
     child = add_parser(
         "extract", help="Preview or explicitly extract a normalized conversation"
     )
-    child.add_argument("--workspace", type=Path, required=True)
+    child.add_argument("--workspace", type=Path)
     child.add_argument("--input", type=Path, required=True)
-    mode = child.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--preview", action="store_true")
-    mode.add_argument("--run-model", action="store_true")
-    child.add_argument("--model")
+    mode = child.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--dry-run",
+        "--preview",
+        dest="preview",
+        action="store_true",
+        help="Preview input without model calls or workspace writes",
+    )
+    mode.add_argument("--run-model", action="store_true", help=argparse.SUPPRESS)
+    child.add_argument("--model", help="Override the model in global Codex config.toml")
     child.add_argument("--escalation-model")
     child.add_argument("--occurred-at")
     child.add_argument("--show-payload", action="store_true")
@@ -92,12 +103,15 @@ def reviewed_provider(path: Path | None, models: list[str]) -> CodexExecProvider
         raise ValueError("Codex executable is unavailable")
     fingerprint = hashlib.sha256(Path(executable).resolve().read_bytes()).hexdigest()
     if (
-        approval.schema_version != 1
+        approval.schema_version != 2
         or not approval.isolation_reviewed
         or approval.executable_sha256 != fingerprint
+        or approval.runtime_policy_sha256 != runtime_policy_fingerprint()
         or not set(models).issubset(approval.models)
     ):
-        raise ValueError("Runtime approval does not cover this executable and models")
+        raise ValueError(
+            "Runtime approval does not cover this executable, policy and models"
+        )
     return CodexExecProvider(executable=executable, runtime_reviewed=True)
 
 
@@ -139,7 +153,11 @@ def extract_command(
             }
             if args.show_payload:
                 item["payload"] = request_payload(
-                    ExtractionRequest(unit=unit, model=args.model or "<select-model>")
+                    ExtractionRequest(
+                        unit=unit,
+                        model=args.model or "<select-model>",
+                        language=config.language,
+                    )
                 )
             units.append(item)
         print(
@@ -153,16 +171,18 @@ def extract_command(
             )
         )
         return 0
-    if not args.model:
-        raise ValueError("Live extraction requires an explicit model")
+    args.model = resolve_model(args.model)
     models = [args.model] + ([args.escalation_model] if args.escalation_model else [])
     if provider is None:
         provider = reviewed_provider(args.runtime_approval, models)
-    runtime_fingerprint = (
-        hashlib.sha256(Path(provider.executable).resolve().read_bytes()).hexdigest()
-        if isinstance(provider, CodexExecProvider)
-        else "test-provider"
-    )
+    runtime_fingerprint = "test-provider"
+    if isinstance(provider, CodexExecProvider):
+        executable_fingerprint = hashlib.sha256(
+            Path(provider.executable).resolve().read_bytes()
+        ).hexdigest()
+        runtime_fingerprint = hashlib.sha256(
+            f"{executable_fingerprint}:{runtime_policy_fingerprint()}".encode()
+        ).hexdigest()
     privacy_fingerprint = hashlib.sha256(
         json.dumps(privacy.literals).encode()
     ).hexdigest()
@@ -177,6 +197,7 @@ def extract_command(
             provider,
             ExtractionSettings(
                 model=args.model,
+                language=config.language,
                 escalation_model=args.escalation_model,
                 state_directory=state_directory,
                 privacy_fingerprint=privacy_fingerprint,
@@ -191,6 +212,7 @@ def extract_command(
                 "attempts": result.attempts,
                 "unresolved_message_ids": result.unresolved_message_ids,
                 "failure_category": result.failure_category,
+                "failure_detail": result.failure_detail,
                 "usage": [usage.model_dump() for usage in result.usage],
             }
         )

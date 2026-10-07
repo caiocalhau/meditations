@@ -50,4 +50,5 @@ def test_offline_demo_with_reimport_and_reflection(tmp_path):
         "records": 3,
         "conflicts": [],
         "capture": "not implemented",
+        "saved_composition_failures": [],
     }

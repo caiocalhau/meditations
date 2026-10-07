@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from meditations.config import load_workspace
-from meditations.extraction.codex_exec import CodexExecProvider
+from meditations.extraction.codex_exec import (
+    PROCESS_ENV_ALLOWLIST,
+    CodexExecProvider,
+    runtime_policy_fingerprint,
+)
 from meditations.extraction.provider import ExtractionRequest, ProviderError
 from meditations.extraction.validation import validate_input
 
@@ -59,6 +63,45 @@ print(json.dumps({{"type":"turn.completed"}}))
     assert result.usage.elapsed_seconds >= 0
 
 
+def test_runtime_policy_is_fixed_and_child_environment_is_allowlisted(
+    workspace, tmp_path, monkeypatch
+):
+    response = json.loads((FIXTURES / "response.json").read_text())
+    body = f"""import json, os, sys
+args = sys.argv[1:]
+assert args[:2] == ["exec", "--ignore-user-config"]
+assert args[args.index("--thread-source") + 1] == "meditations-journal-extraction"
+disabled = [args[i + 1] for i, value in enumerate(args[:-1]) if value == "--disable"]
+assert disabled == ["apps", "browser_use", "browser_use_external",
+    "browser_use_full_cdp_access", "code_mode_host", "computer_use", "hooks",
+    "image_generation", "in_app_browser", "multi_agent", "plugins",
+    "remote_plugin", "shell_tool", "skill_mcp_dependency_install",
+    "skill_search", "sleep_tool", "tool_suggest", "view_image"]
+assert args[args.index("--sandbox") + 1] == "read-only"
+assert args[args.index("--model") + 1] == "synthetic-model"
+assert args[args.index("-c") + 1] == 'approval_policy="never"'
+assert 'web_search="disabled"' in args
+assert 'shell_environment_policy.inherit="none"' in args
+assert "mcp_servers={{}}" in args
+assert os.environ.get("MED_TEST_SECRET") is None
+assert os.environ["CODEX_HOME"] == "/synthetic/codex"
+assert os.environ["PATH"] == "/usr/bin:/bin"
+result = {response!r}
+print(json.dumps({{"type":"item.completed", "item":{{
+    "type":"agent_message", "text":json.dumps(result)}}}}))
+print(json.dumps({{"type":"turn.completed"}}))
+"""
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    monkeypatch.setenv("CODEX_HOME", "/synthetic/codex")
+    monkeypatch.setenv("MED_TEST_SECRET", "do-not-forward")
+    monkeypatch.setenv("TMPDIR", str(tmp_path))
+    CodexExecProvider(
+        executable=executable(tmp_path, body), runtime_reviewed=True
+    ).extract(request(workspace))
+    assert "MED_TEST_SECRET" not in PROCESS_ENV_ALLOWLIST
+    assert len(runtime_policy_fingerprint()) == 64
+
+
 @pytest.mark.parametrize(
     "body,category",
     [
@@ -92,6 +135,16 @@ print(json.dumps({{"type":"turn.completed"}}))
         (
             'import json; print(json.dumps({"type":"item.started", '
             '"item":{"type":"command_execution", "command":"private-secret"}}))',
+            "unexpected-tool",
+        ),
+        (
+            'import json; print(json.dumps({"type":"item.started", '
+            '"item":{"type":"web_search_call"}}))',
+            "unexpected-tool",
+        ),
+        (
+            'import json; print(json.dumps({"type":"item.completed", '
+            '"item":{"type":"computer_call"}}))',
             "unexpected-tool",
         ),
     ],
@@ -184,3 +237,79 @@ def test_nonzero_exit_preserves_measured_elapsed(workspace, tmp_path):
         )
     assert error.value.usage.elapsed_seconds >= 0
     assert error.value.usage.input_tokens is None
+
+
+def test_composition_uses_same_restricted_runner_with_its_own_schema(
+    workspace, record_data, tmp_path
+):
+    from datetime import date
+
+    from meditations.composition import CompositionRequest
+    from meditations.records import EvidenceRecord
+
+    record = EvidenceRecord.model_validate(record_data)
+    point = {
+        "text": "Compatible writes matter.",
+        "source_record_ids": [str(record.record_id)],
+    }
+    response = {
+        "overview": [point],
+        "topics": [{"title": "Compatibility", "paragraphs": [point]}],
+        "open_items": [],
+        "learning": [],
+        "reflection_questions": [point],
+        "supporting_only_record_ids": [],
+    }
+    body = f"""import json, sys
+args = sys.argv[1:]
+assert args[:2] == ["exec", "--ignore-user-config"]
+assert args[args.index("--sandbox") + 1] == "read-only"
+assert 'approval_policy="never"' in args
+assert "--ephemeral" in args
+with open(args[args.index("--output-schema") + 1]) as source:
+    schema=json.load(source)
+assert "overview" in schema["properties"] and "candidates" not in schema["properties"]
+assert "Older clients need compatible writes." in sys.stdin.read()
+print(json.dumps({{"type":"item.completed","item":{{"type":"agent_message","text":json.dumps({response!r})}}}}))
+print(json.dumps({{"type":"turn.completed","usage":{{"input_tokens":42,"output_tokens":12}}}}))
+"""
+    provider = CodexExecProvider(
+        executable=executable(tmp_path, body), runtime_reviewed=True
+    )
+    request = CompositionRequest(
+        records=(record,),
+        day=date(2026, 10, 3),
+        timezone="UTC",
+        language="en",
+        model="synthetic",
+    )
+    result = provider.compose(request)
+    assert result.response.overview[0].source_record_ids == [record.record_id]
+    assert result.usage.input_tokens == 42
+
+
+def test_composition_rejects_runtime_gate_and_action_events(
+    workspace, record_data, tmp_path
+):
+    from datetime import date
+
+    from meditations.composition import CompositionRequest
+    from meditations.records import EvidenceRecord
+
+    request = CompositionRequest(
+        records=(EvidenceRecord.model_validate(record_data),),
+        day=date(2026, 10, 3),
+        timezone="UTC",
+        language="en",
+        model="synthetic",
+    )
+    with pytest.raises(ProviderError, match="runtime-unverified"):
+        CodexExecProvider(executable="must-not-run").compose(request)
+    body = (
+        'import json; print(json.dumps({"type":"item.started",'
+        '"item":{"type":"command_execution"}}))'
+    )
+    with pytest.raises(ProviderError, match="unexpected-tool"):
+        CodexExecProvider(
+            executable=executable(tmp_path, body), runtime_reviewed=True
+        ).compose(request)

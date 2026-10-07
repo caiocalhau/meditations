@@ -1,9 +1,49 @@
+from ipaddress import ip_address
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
+class StudyResource(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    title: Text
+    url: Text
+
+    @field_validator("url")
+    @classmethod
+    def public_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        host = parsed.hostname or ""
+        if (
+            parsed.scheme not in {"https", "http"}
+            or not host
+            or "." not in host
+            or parsed.username
+            or parsed.password
+            or any(c.isspace() for c in value)
+            or any(c in value for c in '<>"`\\')
+            or host.endswith((".local", ".internal", ".localhost"))
+        ):
+            raise ValueError("Use a public HTTP(S) study URL without credentials")
+        try:
+            address = ip_address(host)
+        except ValueError:
+            pass
+        else:
+            if not address.is_global:
+                raise ValueError("Private addresses are not study resources")
+        return value
 
 
 class EvidenceRecord(BaseModel):
@@ -40,6 +80,9 @@ class EvidenceRecord(BaseModel):
     ]
     uncertainties: list[Text]
     privacy_omissions: list[Text]
+    resources: list[StudyResource] = Field(
+        default_factory=lambda: list[StudyResource]()
+    )
 
     @property
     def source_key(self) -> tuple[UUID, str, str, str]:

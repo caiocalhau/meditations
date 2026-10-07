@@ -44,6 +44,7 @@ class ExtractionSettings:
     state_directory: Path | None = None
     privacy_fingerprint: str = "default"
     runtime_fingerprint: str = "unknown"
+    language: str = "en"
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class ExtractionOutcome:
     reused: int = 0
     unresolved_message_ids: list[str] = field(default_factory=lambda: list[str]())
     failure_category: str | None = None
+    failure_detail: str | None = None
     attempts: int = 0
     usage: list[Usage] = field(default_factory=lambda: list[Usage]())
 
@@ -147,12 +149,15 @@ def extract_unit(
     unit: ConversationUnit,
     provider: ExtractionProvider,
     settings: ExtractionSettings,
+    *,
+    automatic_revision: bool = False,
 ) -> ExtractionOutcome:
     workspace = validate_workspace_path(workspace)
     config = load_workspace(workspace)
     validate_unit_size(unit)
     if (
         not settings.model.strip()
+        or settings.language not in {"en", "pt-BR"}
         or (
             settings.escalation_model is not None
             and not settings.escalation_model.strip()
@@ -174,12 +179,51 @@ def extract_unit(
             "runtime": settings.runtime_fingerprint,
             "schema": ExtractionResponse.model_json_schema(),
             "model": settings.model,
+            "language": settings.language,
             "escalation_model": settings.escalation_model,
             "timeout": settings.timeout_seconds,
             "output_limit": settings.output_limit_bytes,
         }
     )
     with workspace_lock(workspace):
+        if automatic_revision:
+            receipts, pending = load_receipts(workspace)
+            for manifest in pending:
+                if (
+                    manifest.receipt.source_session_id == source_session_id
+                    and manifest.receipt.unit_id == unit.unit_id
+                ):
+                    publish_extraction(workspace, manifest)
+                    receipts.append(manifest.receipt)
+            relevant = [
+                receipt
+                for receipt in receipts
+                if receipt.source_session_id == source_session_id
+                and receipt.unit_id == unit.unit_id
+            ]
+            revision = 0
+            if relevant:
+                latest = max(relevant, key=lambda receipt: receipt.source_revision)
+                candidate = unit.model_copy(
+                    update={"source_revision": latest.source_revision}
+                )
+                candidate_hash = _hash(
+                    {
+                        "unit": candidate.model_dump(mode="json"),
+                        "timezone": config.timezone,
+                    }
+                )
+                revision = latest.source_revision + int(
+                    latest.input_fingerprint != candidate_hash
+                    or latest.extractor_fingerprint != extractor_hash
+                )
+            unit = unit.model_copy(update={"source_revision": revision})
+            input_hash = _hash(
+                {
+                    "unit": unit.model_dump(mode="json"),
+                    "timezone": config.timezone,
+                }
+            )
         cached = _existing(
             workspace, source_session_id, unit, input_hash, extractor_hash
         )
@@ -189,6 +233,7 @@ def extract_unit(
     usages: list[Usage] = []
     result: ProviderResult | None = None
     selected_model = settings.model
+    repair_reason: str | None = None
     for attempt in range(2):
         selected_model = (
             settings.escalation_model or settings.model if attempt else settings.model
@@ -198,26 +243,40 @@ def extract_unit(
                 ExtractionRequest(
                     unit=unit,
                     model=selected_model,
+                    language=settings.language,
                     timeout_seconds=settings.timeout_seconds,
                     output_limit_bytes=settings.output_limit_bytes,
                     repair=bool(attempt),
+                    repair_reason=repair_reason,
                 )
             )
         except ProviderError as error:
             usages.append(error.usage or Usage())
             if error.category == "validation" and attempt == 0:
+                repair_reason = "Output does not match the required JSON schema"
                 continue
             return ExtractionOutcome(
-                failure_category=error.category, attempts=attempt + 1, usage=usages
+                failure_category=error.category,
+                failure_detail=(
+                    "Output does not match the required JSON schema"
+                    if error.category == "validation"
+                    else None
+                ),
+                attempts=attempt + 1,
+                usage=usages,
             )
         usages.append(result.usage)
         try:
             validate_response(result.response, unit)
-        except ValueError:
+        except ValueError as error:
+            repair_reason = str(error)
             if attempt == 0:
                 continue
             return ExtractionOutcome(
-                failure_category="validation", attempts=attempt + 1, usage=usages
+                failure_category="validation",
+                failure_detail=repair_reason,
+                attempts=attempt + 1,
+                usage=usages,
             )
         break
     assert result is not None

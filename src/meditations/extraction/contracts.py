@@ -1,9 +1,9 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from meditations.records import Text
+from meditations.records import StudyResource, Text
 
 Revision = Annotated[int, Field(strict=True, ge=0)]
 Attribution = Literal[
@@ -55,6 +55,9 @@ class EvidenceCandidate(Contract):
     assistance: Assistance
     uncertainties: list[Text]
     privacy_omissions: list[Text]
+    resources: list[StudyResource] = Field(
+        default_factory=lambda: list[StudyResource]()
+    )
 
 
 class ExtractionResponse(Contract):
@@ -91,3 +94,23 @@ class ExtractionReceipt(Contract):
     status: Literal["completed", "completed-with-unresolved"]
     attempts: Annotated[int, Field(strict=True, ge=1, le=2)]
     usage: list[Usage]
+
+
+def output_schema(contract: type[Contract]) -> dict[str, object]:
+    """Require every wire field while allowing older persisted data to omit defaults."""
+
+    def strict(value: object) -> object:
+        if isinstance(value, list):
+            return [strict(item) for item in cast(list[object], value)]
+        if not isinstance(value, dict):
+            return value
+        result = {
+            key: strict(item)
+            for key, item in cast(dict[str, object], value).items()
+            if key != "default"
+        }
+        if "properties" in result:
+            result["required"] = list(cast(dict[str, object], result["properties"]))
+        return result
+
+    return cast(dict[str, object], strict(contract.model_json_schema()))
