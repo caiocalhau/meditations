@@ -12,8 +12,9 @@
   contracts change. Record notable changes under CHANGELOG.md's `[Unreleased]`,
   adding PR links when known. A merge is not a release.
 - Follow Keep a Changelog: group unreleased changes by category, place released
-  versions newest first, and use actual release dates. Unreleased entries may be
-  consolidated after merge. Preserve release facts when correcting older text;
+  versions newest first, and use actual release dates. Preserve merged entries,
+  including unreleased work; append changes/removals when behavior is superseded.
+  Preserve release facts when correcting older text;
   never alter published artifacts or move tags. See docs/architecture/versioning.md.
 - Keep docs/superpowers and .superpowers local and ignored; never force-add them.
   Never commit user captures/notes, conversations, employer material, credentials,

@@ -2,8 +2,16 @@
 
 ## Current status
 
-Meditations has no published release or release tag. All notable changes belong
-under `[Unreleased]`, including changes already merged into `main`.
+Meditations has no published release or release tag. The changelog currently
+separates the original implementation from the next delivery for owner review:
+
+- `[0.1.0]` records the original transcript-based implementation from `main` as
+  the proposed first-release baseline. Its existing entries are preserved.
+- `[Unreleased]` targets `0.2.0` and records the skill-first replacement.
+
+The `0.1.0` section is release preparation, not evidence of a published release.
+Its release date, tag and matching package metadata still require approval and
+release preparation. Do not invent a date or claim either version is released.
 
 The package metadata currently uses `0.1.0.dev0`. This is a Python development
 version under [PEP 440](https://packaging.python.org/en/latest/specifications/version-specifiers/),
@@ -25,11 +33,14 @@ Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
 - Keep plans and unimplemented features in the README and architecture documents.
   Include relevant limitations beside implemented features.
 
-Unreleased entries can be edited or consolidated after merge while retaining
-their meaning and PR references. Older release text can be corrected for accuracy
-or formatting, but corrections must preserve which changes shipped in which
-release. Git retains the editing history; the changelog is a curated release
-history rather than a chronological list of commits.
+Preserve entries for already-merged work, including work under `[Unreleased]`.
+When an architecture or workflow is superseded, append `Changed` and `Removed`
+entries explaining the transition and linking the new PR. Do not replace the
+earlier entries with a description of only the current implementation.
+Entries introduced by the current unmerged PR can be edited or consolidated.
+Corrections to merged entries require owner approval and must preserve their
+meaning, PR references and release facts. Git history complements the changelog;
+it does not replace the readable record of the project's evolution.
 
 Before the first release, the `[Unreleased]` link points to `main`'s commit history.
 Afterward, it compares the latest release tag with `HEAD`. The first release links
