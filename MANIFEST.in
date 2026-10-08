@@ -1,9 +1,10 @@
 include README.md CHANGELOG.md AGENTS.md requirements-dev.txt
 include docs/installation.md
 recursive-include docs/architecture *.md
-recursive-include examples *.jsonl *.json *.md
-recursive-include tests *.py *.jsonl *.json
-recursive-include evals/extraction *.jsonl *.md
+recursive-include examples *.md *.json
+recursive-include skills *.md *.yaml
 recursive-include scripts *.py
+recursive-include tests *.py
 recursive-exclude docs/superpowers *
+recursive-exclude .superpowers *
 global-exclude __pycache__ *.py[cod] .env .env.*

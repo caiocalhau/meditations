@@ -1,165 +1,225 @@
+"""Small local helper for the explicit Codex skill workflow."""
+
 import argparse
 import json
+import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-from meditations.composition import CompositionProvider, cached_composition
-from meditations.config import (
-    initialize_workspace,
-    load_workspace,
-)
-from meditations.diagnostics import saved_composition_failures
-from meditations.extraction.cli import add_extract_command, extract_command
-from meditations.extraction.provider import ExtractionProvider
-from meditations.extraction.receipts import select_active_records
-from meditations.files import workspace_directory, workspace_lock
-from meditations.journal import add_journal_command, journal_command
+from pydantic import BaseModel, ValidationError
+
+from meditations.captures import prepare_day, save_capture
+from meditations.contracts import CaptureDraft, DailyDraft
 from meditations.machine_config import (
-    configure_workspace,
-    resolve_runtime_approval,
+    configure,
+    default_config_path,
+    load_machine_config,
+    resolve_work_date,
     resolve_workspace,
 )
-from meditations.render import generated_bounds, render_daily, update_daily_note
-from meditations.store import import_records, load_records
+from meditations.render import write_daily
+
+SAFE_ERROR_FIELDS = frozenset(
+    {
+        "body",
+        "source_snapshot",
+        "expected_note_sha256",
+        "overview",
+        "topics",
+        "title",
+        "paragraphs",
+        "bullets",
+        "steps",
+        "table",
+        "headers",
+        "rows",
+        "open_items",
+        "learning",
+        "concept",
+        "explanation",
+        "suggested_practice",
+        "resource_urls",
+        "reading_question",
+        "reflection_questions",
+    }
+)
+
+
+def _date(value: str) -> date:
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+        raise argparse.ArgumentTypeError("Use a date in YYYY-MM-DD form")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("Use a date in YYYY-MM-DD form") from error
+
+
+def _read_input() -> bytes:
+    stream = getattr(sys.stdin, "buffer", None)
+    raw = (
+        stream.read(2 * 1024 * 1024 + 1)
+        if stream is not None
+        else sys.stdin.read().encode()
+    )
+    if len(raw) > 2 * 1024 * 1024:
+        raise ValueError("Structured input exceeds the 2 MiB local limit")
+    return raw
+
+
+def _print(model: BaseModel | dict[str, str]) -> None:
+    if isinstance(model, BaseModel):
+        print(model.model_dump_json())
+    else:
+        print(json.dumps(model, ensure_ascii=False))
+
+
+def _validation_message(error: ValidationError) -> str:
+    messages: list[str] = []
+    for detail in error.errors(
+        include_input=False, include_context=False, include_url=False
+    ):
+        parts: list[str] = []
+        for part in detail["loc"]:
+            if isinstance(part, int):
+                parts.append(str(part))
+            elif part in SAFE_ERROR_FIELDS:
+                parts.append(part)
+            else:
+                parts.append("<unknown field>")
+        location = ".".join(parts) or "input"
+        messages.append(f"{location}: {detail['msg']}")
+    return "Invalid structured input: " + "; ".join(messages)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="meditations")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    configure_parser = commands.add_parser(
+        "configure", help="Configure this machine's private vault"
+    )
+    configure_parser.add_argument("--workspace", type=Path, required=True)
+    configure_parser.add_argument(
+        "--timezone", required=True, help="IANA timezone, for example America/Sao_Paulo"
+    )
+    configure_parser.add_argument("--language", choices=("en", "pt-BR"), default="en")
+
+    config_parser = commands.add_parser(
+        "config", help="Inspect non-path machine defaults"
+    )
+    config_commands = config_parser.add_subparsers(dest="config_command", required=True)
+    config_commands.add_parser(
+        "show", help="Show configured timezone, language and local date"
+    )
+
+    schema = commands.add_parser("schema", help="Print a JSON input schema for a skill")
+    schema.add_argument("kind", choices=("capture", "daily"))
+
+    capture = commands.add_parser(
+        "capture", help="Save one readable session checkpoint"
+    )
+    capture.add_argument(
+        "--date",
+        type=_date,
+        help="Work date; defaults to today in the configured timezone",
+    )
+    capture.add_argument(
+        "--input", default="-", choices=("-",), help="Read CaptureDraft JSON from stdin"
+    )
+
+    daily = commands.add_parser("daily", help="Prepare or update one daily note")
+    daily_commands = daily.add_subparsers(dest="daily_command", required=True)
+    prepare = daily_commands.add_parser(
+        "prepare", help="Read captures and report whether composition is needed"
+    )
+    prepare.add_argument(
+        "--date",
+        type=_date,
+        help="Work date; defaults to today in the configured timezone",
+    )
+    write = daily_commands.add_parser(
+        "write", help="Validate and publish a structured daily draft"
+    )
+    write.add_argument("--date", type=_date, required=True)
+    write.add_argument(
+        "--input", default="-", choices=("-",), help="Read DailyDraft JSON from stdin"
+    )
+    return parser
 
 
 def main(
     argv: list[str] | None = None,
     *,
-    provider: ExtractionProvider | None = None,
-    state_directory: Path | None = None,
     machine_config_path: Path | None = None,
-    composer: CompositionProvider | None = None,
+    now: datetime | None = None,
 ) -> int:
-    parser = argparse.ArgumentParser(prog="meditations")
-    commands = parser.add_subparsers(dest="command", required=True)
-    configure = commands.add_parser(
-        "configure",
-        help="Set this machine's default workspace and runtime approval path",
-    )
-    configure.add_argument("--workspace", type=Path)
-    configure.add_argument("--runtime-approval", type=Path)
-    init = commands.add_parser("init", help="Initialize a private records directory")
-    init.add_argument("--workspace", type=Path)
-    init.add_argument("--timezone", required=True)
-    init.add_argument("--language", choices=("en", "pt-BR"))
-    imports = commands.add_parser(
-        "import-records", help="Import normalized evidence JSONL"
-    )
-    imports.add_argument("--workspace", type=Path)
-    imports.add_argument("--input", type=Path, required=True)
-    for command in ("render", "status"):
-        child = commands.add_parser(command)
-        child.add_argument("--workspace", type=Path)
-    add_extract_command(commands.add_parser)
-    add_journal_command(commands.add_parser)
+    parser = build_parser()
     args = parser.parse_args(argv)
-    if args.command == "configure" and not (args.workspace or args.runtime_approval):
-        configure.error("provide --workspace or --runtime-approval")
+    config_path = machine_config_path or default_config_path()
+    current_time = now or datetime.now(timezone.utc)
     try:
         if args.command == "configure":
-            workspace = configure_workspace(
+            config = configure(
                 args.workspace,
-                machine_config_path,
-                runtime_approval=args.runtime_approval,
+                timezone=args.timezone,
+                language=args.language,
+                path=config_path,
             )
-            print(f"Configured default workspace: {workspace}")
-            if args.runtime_approval is not None:
-                print(
-                    "Saved runtime approval path; the record is validated "
-                    "before inference"
-                )
+            _print({"status": "configured", "workspace": str(config.workspace)})
             return 0
-        workspace = resolve_workspace(args.workspace, machine_config_path)
-        args.workspace = workspace
-        if (
-            args.command in ("extract", "journal")
-            and provider is None
-            and not (args.preview if args.command == "extract" else args.dry_run)
-        ):
-            args.runtime_approval = resolve_runtime_approval(
-                args.runtime_approval, machine_config_path
+
+        if args.command == "schema":
+            contract = CaptureDraft if args.kind == "capture" else DailyDraft
+            print(json.dumps(contract.model_json_schema(), ensure_ascii=False))
+            return 0
+
+        workspace = resolve_workspace(path=config_path)
+        config = load_machine_config(config_path)
+        work_date = resolve_work_date(
+            config, getattr(args, "date", None), now=current_time
+        )
+
+        if args.command == "config":
+            _print(
+                {
+                    "timezone": config.timezone,
+                    "language": config.language,
+                    "today": work_date.isoformat(),
+                }
             )
-        if args.command == "extract":
-            return extract_command(args, provider, state_directory)
-        if args.command == "journal":
-            return journal_command(args, provider, state_directory, composer=composer)
-        if args.command == "init":
-            initialize_workspace(workspace, args.timezone, args.language)
-            print("Initialized private workspace")
-        elif args.command == "import-records":
-            created, unchanged = import_records(workspace, args.input)
-            print(json.dumps({"created": created, "unchanged": unchanged}))
-        else:
-            with workspace_lock(workspace):
-                config = load_workspace(workspace)
-                records = load_records(workspace)
-                active_records = select_active_records(workspace, records)
-                directory = workspace_directory(workspace, "engineering/daily")
-                if args.command == "render":
-                    zone = ZoneInfo(config.timezone)
-                    days = {
-                        record.occurred_at.astimezone(zone).date()
-                        for record in active_records
-                    }
-                    for path in directory.glob("*.md"):
-                        try:
-                            days.add(date.fromisoformat(path.stem))
-                        except ValueError:
-                            continue
-                    conflicts: list[str] = []
-                    for day in sorted(days):
-                        try:
-                            composition = cached_composition(
-                                workspace, config, day, active_records
-                            )
-                            target = directory / f"{day}.md"
-                            if (
-                                composition is None
-                                and target.exists()
-                                and b"<!-- meditations:template:" in target.read_bytes()
-                            ):
-                                raise ValueError(
-                                    "No current composition; run journal to refresh it"
-                                )
-                            update_daily_note(
-                                directory / f"{day}.md",
-                                render_daily(
-                                    active_records, config, day, composition=composition
-                                ),
-                            )
-                        except ValueError:
-                            conflicts.append(day.isoformat())
-                    print(json.dumps({"days": len(days), "conflicts": conflicts}))
-                    if conflicts:
-                        return 1
-                else:
-                    conflicts = []
-                    for path in directory.glob("*.md"):
-                        try:
-                            if path.is_symlink():
-                                raise ValueError("Symbolic link")
-                            generated_bounds(path.read_bytes())
-                        except ValueError:
-                            conflicts.append(path.name)
-                    failures = saved_composition_failures(
-                        args.workspace, config, active_records
-                    )
-                    print(
-                        json.dumps(
-                            {
-                                "records": len(records),
-                                "conflicts": conflicts,
-                                "capture": "not implemented",
-                                "saved_composition_failures": failures,
-                            }
-                        )
-                    )
-                    if conflicts:
-                        return 1
-        return 0
+            return 0
+
+        if args.command == "capture":
+            draft = CaptureDraft.model_validate_json(_read_input())
+            saved = save_capture(
+                workspace,
+                work_date,
+                draft,
+                captured_at=current_time.astimezone(timezone.utc),
+            )
+            _print(
+                {
+                    "status": saved.status,
+                    "date": work_date.isoformat(),
+                    "path": saved.path,
+                    "capture_id": saved.capture_id,
+                }
+            )
+            return 0
+
+        if args.daily_command == "prepare":
+            prepared = prepare_day(config, work_date)
+            _print(prepared)
+            return 1 if prepared.status == "conflict" else 0
+
+        draft = DailyDraft.model_validate_json(_read_input())
+        result = write_daily(config, work_date, draft)
+        _print(result)
+        return 1 if result.status == "conflict" else 0
+    except ValidationError as error:
+        print(_validation_message(error), file=sys.stderr)
+        return 1
     except (ValueError, OSError) as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

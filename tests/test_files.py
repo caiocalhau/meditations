@@ -1,76 +1,54 @@
 import pytest
 
-from meditations import files
-from meditations.render import update_daily_note
+from meditations.files import atomic_write, workspace_directory, workspace_lock
 
 
-def test_reflection_survives_and_unchanged_render_does_not_write(tmp_path):
-    path = tmp_path / "note.md"
-    assert update_daily_note(path, "# Day\n") == "created"
-    assert "Personal reflection: not provided." in path.read_text()
-    with path.open("ab") as stream:
-        stream.write(b"\r\nMy reflection stays exact.\r\n")
-    assert update_daily_note(path, "# Changed day\n") == "updated"
-    before = path.read_bytes()
-    timestamp = path.stat().st_mtime_ns
-    assert before.endswith(b"\r\nMy reflection stays exact.\r\n")
-    assert update_daily_note(path, "# Changed day\n") == "unchanged"
-    assert path.stat().st_mtime_ns == timestamp
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "Handwritten only.",
-        "<!-- meditations:generated:end -->\n<!-- meditations:generated:start -->",
-        "<!-- meditations:generated:start --> twice "
-        "<!-- meditations:generated:start -->"
-        "<!-- meditations:generated:end -->",
-    ],
-)
-def test_invalid_generated_boundaries_preserve_file(tmp_path, text):
-    path = tmp_path / "note.md"
-    path.write_text(text)
-    with pytest.raises(ValueError):
-        update_daily_note(path, "replacement")
-    assert path.read_text() == text
-
-
-def test_failed_atomic_replace_preserves_existing_file(tmp_path, monkeypatch):
-    path = tmp_path / "note.md"
-    update_daily_note(path, "old")
+def test_atomic_write_creates_and_compare_replaces_file(tmp_path):
+    path = tmp_path / "vault/daily.md"
+    atomic_write(path, b"first", expected=None)
     before = path.read_bytes()
 
-    def fail_replace(*args):
-        raise OSError("synthetic disk failure")
+    atomic_write(path, b"second", expected=before)
 
-    monkeypatch.setattr(files.os, "replace", fail_replace)
-    with pytest.raises(OSError):
-        update_daily_note(path, "new")
-    assert path.read_bytes() == before
+    assert path.read_bytes() == b"second"
+    assert list(path.parent.glob(".meditations-*")) == []
+
+
+def test_atomic_write_preserves_changed_content_and_cleans_temporary(tmp_path):
+    path = tmp_path / "daily.md"
+    path.write_bytes(b"newer user edit")
+
+    with pytest.raises(ValueError, match="changed"):
+        atomic_write(path, b"replace", expected=b"older")
+
+    assert path.read_bytes() == b"newer user edit"
     assert list(tmp_path.glob(".meditations-*")) == []
 
 
-def test_changed_input_is_not_overwritten(tmp_path, monkeypatch):
-    path = tmp_path / "note.md"
-    update_daily_note(path, "old")
-    real_fsync = files.os.fsync
-
-    def edit_during_write(descriptor):
-        path.write_text("Concurrent handwritten edit.")
-        real_fsync(descriptor)
-
-    monkeypatch.setattr(files.os, "fsync", edit_during_write)
-    with pytest.raises(ValueError):
-        update_daily_note(path, "new")
-    assert path.read_text() == "Concurrent handwritten edit."
-
-
-def test_symbolic_link_note_is_not_replaced(tmp_path):
+def test_atomic_write_rejects_symlink_target(tmp_path):
     target = tmp_path / "user.md"
-    target.write_text("User text.")
+    target.write_text("keep")
     link = tmp_path / "daily.md"
     link.symlink_to(target)
-    with pytest.raises(ValueError):
-        update_daily_note(link, "new")
-    assert target.read_text() == "User text."
+
+    with pytest.raises(ValueError, match="symbolic link"):
+        atomic_write(link, b"replace", expected=b"keep")
+
+    assert target.read_text() == "keep"
+
+
+def test_workspace_directory_rejects_path_escape(tmp_path):
+    workspace = tmp_path / "vault"
+    workspace.mkdir()
+
+    with pytest.raises(ValueError, match="outside"):
+        workspace_directory(workspace, "../outside")
+
+
+def test_workspace_lock_creates_machine_private_lock_directory(tmp_path):
+    path = tmp_path / "vault"
+    path.mkdir()
+    with workspace_lock(path):
+        assert path.is_dir()
+    with workspace_lock(path):
+        assert path.is_dir()
