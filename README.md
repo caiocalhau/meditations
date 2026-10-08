@@ -8,8 +8,8 @@ relevant work from each session with `$take-note`, then use `$update-journal` to
 combine that date's captures into one readable Markdown report. You write your own
 reflection in the note.
 
-**MVP status:** the skill-first workflow is implemented on this development branch.
-Linux/macOS installation and real-session note quality still need owner validation.
+**MVP status:** the skill-first workflow is merged into `main` and undergoing
+owner validation on Linux/macOS and real-session note quality.
 Weekly/monthly reviews and automatic capture are later stages.
 
 ## Why this project
@@ -96,3 +96,10 @@ CI covers Linux and macOS with Python 3.10 and 3.14.
 See [the implementation architecture](docs/architecture/skill-first-journal.md),
 [the approved daily-note structure](docs/architecture/daily-note-template.md),
 [the changelog](CHANGELOG.md), and [the versioning policy](docs/architecture/versioning.md).
+
+## Next milestone
+
+The current milestone is normal-use validation across macOS and Linux. Development
+will resume from the [roadmap and resumption guide](docs/roadmap.md), which records
+the pilot checks and the proposed explicit weekly-review milestone. Future features
+require scope and implementation approval after reviewing the pilot feedback.

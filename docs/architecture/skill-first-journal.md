@@ -1,6 +1,6 @@
 # Skill-first journal decision
 
-Status: MVP design approved on 2026-10-07 and implemented on a development branch.
+Status: MVP design approved on 2026-10-07 and merged into `main` on 2026-10-08.
 Owner validation on Linux/macOS and real-session note quality remain pending.
 
 ## Decision
@@ -52,3 +52,9 @@ stronger analysis isolation need separate designs after the daily workflow has
 been used. The old Codex transcript/extraction runtime is removed from the active
 codebase; Git history retains the prior implementation. Existing private notes and
 legacy JSON remain untouched and are not imported by the new helper.
+
+## Next milestone and handoff
+
+See the [roadmap and resumption guide](../roadmap.md) for the ongoing usage pilot
+and the proposed explicit weekly review. The delivery stages describe the broader
+vision; their next implementation order remains subject to owner review.

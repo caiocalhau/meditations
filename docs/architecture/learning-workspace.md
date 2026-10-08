@@ -1,6 +1,6 @@
 # Learning workspace architecture
 
-Status: skill-first daily journal MVP implemented on a development branch;
+Status: skill-first daily journal MVP merged into `main`;
 owner validation on Linux and macOS and real-session summary review remain open.
 Do not describe future reviews or automation as delivered.
 
@@ -120,3 +120,9 @@ Monthly review will compare available weekly/daily evidence over time. Missing
 captures mean missing evidence, not regression. Conclusions should link to source
 notes and state uncertainty. Both reviews require separate future designs and
 validation; no review skill or automated schedule ships in this MVP.
+
+## Next milestone and handoff
+
+See the [roadmap and resumption guide](../roadmap.md) for the ongoing usage pilot
+and the proposed explicit weekly review. The delivery stages describe the broader
+vision; their next implementation order remains subject to owner review.
