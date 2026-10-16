@@ -131,3 +131,65 @@ def test_capture_path_refuses_symlink_directory(tmp_path):
             CaptureDraft(body="Text"),
             captured_at=datetime.now(timezone.utc),
         )
+
+
+@pytest.mark.parametrize("whole_file", [True, False])
+def test_windows_line_endings_preserve_identity_and_allow_new_captures(
+    tmp_path, whole_file
+):
+    config = configured(tmp_path)
+    day = date(2026, 10, 15)
+    body = "## Decision\n\nKeep original writing."
+    first = save_capture(
+        config.workspace,
+        day,
+        CaptureDraft(body=body),
+        captured_at=datetime(2026, 10, 15, 12, tzinfo=timezone.utc),
+    )
+    path = Path(first.path)
+    original = path.read_bytes()
+    if whole_file:
+        windows = original.replace(b"\n", b"\r\n")
+    else:
+        header, content = original.split(b"\n---\n\n", maxsplit=1)
+        windows = header + b"\n---\n\n" + content.replace(b"\n", b"\r\n")
+    path.write_bytes(windows)
+
+    sources = load_captures(config.workspace, day)
+    assert sources[0].capture_id == first.capture_id
+    assert sources[0].body == body
+    repeat = save_capture(
+        config.workspace,
+        day,
+        CaptureDraft(body=body),
+        captured_at=datetime(2026, 10, 15, 13, tzinfo=timezone.utc),
+    )
+    assert repeat.status == "unchanged"
+    later = save_capture(
+        config.workspace,
+        day,
+        CaptureDraft(body="Later checkpoint."),
+        captured_at=datetime(2026, 10, 15, 14, tzinfo=timezone.utc),
+    )
+    assert later.status == "created"
+    assert len(load_captures(config.workspace, day)) == 2
+    assert path.read_bytes() == windows
+
+
+def test_invalid_capture_error_identifies_file_without_echoing_content(tmp_path):
+    config = configured(tmp_path)
+    day = date(2026, 10, 15)
+    result = save_capture(
+        config.workspace,
+        day,
+        CaptureDraft(body="Original."),
+        captured_at=datetime(2026, 10, 15, 12, tzinfo=timezone.utc),
+    )
+    path = Path(result.path)
+    path.write_bytes(b"private malformed content")
+
+    with pytest.raises(ValueError) as caught:
+        load_captures(config.workspace, day)
+    assert str(path) in str(caught.value)
+    assert "frontmatter or encoding" in str(caught.value)
+    assert "private malformed content" not in str(caught.value)

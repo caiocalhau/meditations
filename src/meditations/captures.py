@@ -93,7 +93,9 @@ def save_capture(
 
 def _parse_capture(content: bytes, day: date, expected_id: str) -> CaptureSource:
     try:
-        header, body_bytes = content.split(b"\n---\n\n", maxsplit=1)
+        header, body_bytes = content.replace(b"\r\n", b"\n").split(
+            b"\n---\n\n", maxsplit=1
+        )
         lines = header.decode("utf-8").splitlines()
         metadata = dict(line.split(": ", maxsplit=1) for line in lines[1:])
         body = body_bytes.decode("utf-8")
@@ -146,7 +148,10 @@ def load_captures(workspace: Path, day: date) -> list[CaptureSource]:
         match = re.fullmatch(r"([0-9a-f]{64})-([0-9]{8}T[0-9]{12}Z)", path.stem)
         if not match:
             raise ValueError("Invalid capture filename identity")
-        source = _parse_capture(path.read_bytes(), day, match.group(1))
+        try:
+            source = _parse_capture(path.read_bytes(), day, match.group(1))
+        except ValueError as error:
+            raise ValueError(f"Invalid capture {path}: {error}") from error
         if _time_key(source.captured_at) != match.group(2):
             raise ValueError("Capture timestamp does not match its filename")
         sources.append(source)

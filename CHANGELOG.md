@@ -27,6 +27,10 @@ Target version: **0.2.0** — skill-first daily journal.
 - Updated the daily report to group work, reasoning, outcomes, next steps, study resources and reflection questions while preserving personal writing. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Updated setup, examples, architecture and packaging documentation to describe the skill-first workflow, its compatibility changes and pending validation. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 
+### Fixed
+
+- Accept Windows CRLF line endings in synchronized captures while preserving content identities and original files; capture validation errors identify the affected file. ([#5](https://github.com/caiocalhau/meditations/pull/5))
+
 ### Removed
 
 - Transcript scanning, nested model execution, runtime approvals/model allowlists, per-message evidence and extraction/composition receipts, superseding the original implementation recorded under the 0.1.0 baseline. ([#4](https://github.com/caiocalhau/meditations/pull/4))
