@@ -1,6 +1,6 @@
 # Roadmap and resumption guide
 
-Updated: 2026-10-08.
+Updated: 2026-10-15.
 
 ## Where we stopped
 
@@ -51,76 +51,47 @@ to assess repeatability and recurring friction.
 with no unresolved loss/overwrite defects. Record which checks actually passed
 and which remain untested. Fix demonstrated defects before expanding scope.
 
-## Recommended next feature: an explicit weekly review
+## Current delivery: an explicit weekly review
 
-Status: proposal for review when development resumes; not implemented or approved
-for implementation by this roadmap.
+Status: the owner approved the design and implementation plan on 2026-10-15 after
+reviewing a private manual example. The daily pilot was reported ready to extend;
+this does not independently certify every checklist item above.
 
-**Goal:** turn the accumulated daily reports and personal reflections into useful,
-evidence-based feedback with concrete study or practice actions.
+Weekly review is implemented on the feature branch. See the
+[weekly contract](architecture/weekly-review.md) for the delivered behavior and
+[synthetic examples](../examples/weekly-review/README.md) for the format. It provides
+substantive analysis on first run, feedback on later weekly responses, optional
+English feedback, and previous-practice context. Feedback stays in the weekly
+note; earlier plans to insert corrections beneath daily passages are superseded.
 
-The proposed workflow follows the MVP's boundaries: an explicitly invoked skill
-uses the active session, reads a user-selected date range from the private vault,
-and produces a review linked to its source notes. Keep Python responsible for
-validated selection and guarded storage where those operations are needed. Do not
-reintroduce transcript scanning, nested model execution or model approval lists.
-
-Proposed first scope:
-
-- Summarize recurring questions, decisions, unresolved work and reported progress.
-- Examine the user's own reflections separately from AI-written explanations.
-- Distinguish a supported conceptual error, unclear wording, contradictory evidence
-  and insufficient evidence. Agreement with an assistant does not prove mastery.
-- Cite the relevant daily note and passage for substantive feedback; acknowledge
-  missing days instead of claiming complete coverage.
-- Recommend one or two practical exercises or study actions tied to the evidence.
-- Preserve original reflections. The owner previously requested dated, attributed
-  corrections directly beneath the original passage. Design their identity and
-  repeat-run behavior before allowing any write to a daily note.
-
-Before implementation, review and approve these decisions:
-
-1. Invocation name, explicit date-range handling and timezone semantics.
-2. Whether daily notes suffice as review inputs or captures are needed in specific
-   cases; avoid loading the same evidence twice without a reason.
-3. One synthetic review example that establishes length, sections, source links,
-   uncertainty and the correction format.
-4. Weekly output location, preservation of personal writing, repeat-run behavior
-   and handling of late-arriving or changed daily notes.
-5. Whether corrections are written in the first delivery or presented for approval
-   before a separate write. No silent replacement of the original text.
-6. Input-size boundaries and early error/status reporting before model drafting.
-
-Validate deterministic date/selection, preservation, conflict and repeat-run
-behavior with tests. Evaluate feedback quality using synthetic cases with known
-mistakes, ambiguous wording, missing reflections and unsupported claims of mastery.
-Use private notes only in owner-authorized local acceptance tests.
+Acceptance still needs owner review of the synthetic outputs and an explicitly
+authorized private run after installation. Confirm substantive feedback, correct
+source links, protected questions/responses, unchanged reruns, changed-answer
+updates and cross-machine operation. Keep private evidence out of this repository.
 
 ## What stays deferred
 
 Automatic capture, hooks, scheduling, automatic Git synchronization, monthly
 reviews, browsing for new study resources, persistent model memory and support for
-other agents remain outside the next feature proposal. Existing sourced study
+other agents remain outside this delivery. Existing sourced study
 links can still be discussed. No dependency or runtime change is assumed.
 
 The longer-term vision remains daily automation and broader learning reviews.
-The recommendation to try a manual weekly review before automation is a proposed
-sequencing change, motivated by learning from the current pilot; it requires owner
-agreement when choosing the next implementation scope.
+The owner chose an explicit weekly review before automation, informed by the pilot
+and a focused literature review. Broader automation still requires separate design.
 
-## How to resume
+## Next acceptance steps
 
-1. Update the local `main` checkout and read this document plus the current product
-   contract. Check repository status before making changes.
-2. Review the owner's pilot feedback privately; record a sanitized summary of
-   passed checks, reproducible defects and remaining questions.
-3. Prioritize any data-preservation or daily-usability fixes. If the pilot is
-   satisfactory, confirm whether the weekly review is still the next goal.
-4. Agree on the review example and unresolved decisions above, then write the
-   detailed implementation plan against the actual code at that time.
-5. Obtain implementation approval before creating the feature branch and coding.
-   Update setup/product documentation and append changelog entries for delivered
-   changes, preserving historical entries.
+1. Review the synthetic weekly outputs against the semantic rubric and confirm
+   that substantive reasoning feedback and English feedback are useful.
+2. Review the implementation checks and approve the integration workflow. Existing
+   manual weekly previews require explicit conversion before helper updates.
+3. Authorize a private real-note trial after installing the new skill. Check
+   protected answers, stable questions, unchanged reruns and later response updates
+   on both machines. Retain real trial material only in the private vault.
+4. Resolve demonstrated preservation or usability defects before expanding scope.
+5. After acceptance, choose the next goal from real usage. Automation and monthly
+   analysis remain separate proposals; merging this feature is not a release.
 
 This document is a public handoff and planning checkpoint. It does not announce a
 release, certify the ongoing pilot, or authorize implementation of future features.

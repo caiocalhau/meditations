@@ -12,9 +12,9 @@ python3 scripts/install.py
 ```
 
 Requires Python >=3.10 with `venv` and pip. On first setup, the installer asks for
-an existing private vault, IANA timezone and note language. It creates a dedicated
+an existing private vault, IANA timezone, note language and English-feedback preference. It creates a dedicated
 virtual environment in `~/.local/share/meditations/venv`, installs this checkout,
-links the helper into `~/.local/bin`, and registers both Codex skill folders.
+links the helper into `~/.local/bin`, and registers the Codex skill folders.
 The first installation needs network access to download the pinned dependencies.
 On Linux distributions that package `venv` separately, install the corresponding
 Python venv package if `python3 -m venv` is unavailable.
@@ -41,7 +41,7 @@ Ensure `$HOME/.local/bin` is on your shell's `PATH`. Keep this checkout at a sta
 path because the links and editable installation point to it. Restart Codex if
 the skills do not appear.
 Codex discovers user skills under `$HOME/.agents/skills` and supports symlinked
-skill folders. Invoke them explicitly as `$take-note` and `$update-journal`.
+skill folders. Invoke them explicitly as `$take-note`, `$update-journal` and `$weekly-review`.
 
 ## Dotfiles and GNU Stow
 
@@ -106,6 +106,8 @@ $take-note
 $take-note for 2026-10-06
 $update-journal
 $update-journal for 2026-10-06
+$weekly-review
+$weekly-review for 2026-10-06
 ```
 
 `$take-note` captures relevant concepts and outcomes from the current session as
@@ -157,3 +159,25 @@ review the result before relying on it.
 Remove only the two Meditations skill links and the helper symlink you created,
 then remove `$HOME/.local/share/meditations/venv` if you no longer need it. Keep
 your Obsidian captures and notes; uninstalling the helper does not remove them.
+
+## Updating for weekly review
+
+Update the source checkout, then rerun `python3 scripts/install.py` to register
+`$weekly-review`. Restart Codex if the new skill is not visible. The helper remains
+editable, and repeat setup preserves existing machine preferences. First interactive
+setup asks whether English feedback should be enabled; existing configurations
+default to disabled without being rewritten on read.
+
+```bash
+meditations config set --english-feedback on
+meditations config show
+```
+
+Use `off` to disable the preference. This setting is local to each machine, separate
+from the note language. Update the checkout before using extended settings with an
+older helper. No new dependency or runtime approval is required.
+
+`$weekly-review` defaults to the current Monday–Sunday week; name any date to select
+a different week. Sync daily notes and weekly responses first. Existing handwritten
+weekly notes are not adopted automatically. See the
+[weekly contract](architecture/weekly-review.md) for preservation and source limits.

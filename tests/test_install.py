@@ -26,7 +26,7 @@ def test_setup_links_are_repeatable_and_preserve_other_skills(tmp_path):
     module = installer()
     repo = tmp_path / "checkout with spaces"
     home = tmp_path / "home"
-    for name in ("take-note", "update-journal"):
+    for name in ("take-note", "update-journal", "weekly-review"):
         (repo / "skills" / name).mkdir(parents=True)
     other = home / ".agents/skills/other/SKILL.md"
     other.parent.mkdir(parents=True)
@@ -36,7 +36,7 @@ def test_setup_links_are_repeatable_and_preserve_other_skills(tmp_path):
     module["ensure_links"](repo, home)
 
     assert other.read_text() == "existing skill"
-    for name in ("take-note", "update-journal"):
+    for name in ("take-note", "update-journal", "weekly-review"):
         link = home / ".agents/skills" / f"meditations-{name}"
         assert link.is_symlink()
         assert link.resolve() == repo / "skills" / name
@@ -95,3 +95,45 @@ def test_setup_requires_explicit_preferences_when_reconfiguring_vault(
 
     with pytest.raises(ValueError, match="--timezone and --language"):
         module["choose_settings"](tmp_path / "home", vault, timezone, language)
+
+
+@pytest.mark.parametrize("english", [True, False])
+def test_setup_preserves_saved_english_preference(tmp_path, monkeypatch, english):
+    import json
+
+    module = installer()
+    home = tmp_path / "home"
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    config = home / ".config/meditations/config.json"
+    config.parent.mkdir(parents=True)
+    content = json.dumps(
+        {
+            "schema_version": 2,
+            "workspace": str(vault),
+            "timezone": "UTC",
+            "language": "en",
+            "english_feedback": english,
+        }
+    )
+    config.write_text(content)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr("sys.platform", "linux")
+    assert module["choose_settings"](home, None, None, None) is None
+    assert config.read_text() == content
+
+
+def test_first_interactive_setup_offers_english_feedback(tmp_path, monkeypatch):
+    module = installer()
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    answers = iter([str(vault), "UTC", "pt-BR", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    assert module["choose_settings"](tmp_path / "home", None, None, None) == (
+        vault,
+        "UTC",
+        "pt-BR",
+        True,
+    )

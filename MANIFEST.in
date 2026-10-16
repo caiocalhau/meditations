@@ -1,5 +1,6 @@
 include README.md CHANGELOG.md AGENTS.md requirements-dev.txt
-include docs/installation.md
+include docs/installation.md docs/roadmap.md
+recursive-include evals/weekly-review *.md
 recursive-include docs/architecture *.md
 recursive-include examples *.md *.json
 recursive-include skills *.md *.yaml

@@ -14,6 +14,8 @@ Target version: **0.2.0** — skill-first daily journal.
 
 ### Added
 
+- Explicit weekly learning reviews with evidence-linked reasoning feedback, protected practice responses, readable week ranges, and read-only daily-note sources.
+- Saved opt-in English feedback, first-setup guidance, prior-practice follow-up, and early unchanged/conflict/source-size reporting for weekly reviews.
 - Explicit Codex skills to capture conceptual session checkpoints and consolidate a work date into one daily report. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Readable Markdown checkpoints that accumulate across sessions and can be synchronized through the user's existing vault workflow. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Guided Linux/macOS installation with repeatable helper/skill registration, machine-local configuration and GNU Stow bootstrap guidance. ([#4](https://github.com/caiocalhau/meditations/pull/4))

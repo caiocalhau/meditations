@@ -17,10 +17,13 @@ Delivery proceeds in three stages:
    work date, protected personal writing, Linux/macOS Codex use, and understandable
    local status. Weekly/monthly feedback can still be requested manually from an
    external assistant using selected notes.
-2. **Daily automation:** incremental lifecycle capture, recovery, pause/exclusions,
+2. **Weekly learning review:** explicit evidence-linked feedback on daily notes and
+   personal responses, optional English feedback and delayed practice. Implemented
+   on the feature branch; native macOS and real-use validation remain open.
+3. **Daily automation:** incremental lifecycle capture, recovery, pause/exclusions,
    scheduling and reconciliation reduce repeated manual commands. Unavailable
    sessions/machines remain missing until their data becomes available.
-3. **Learning workspace:** integrated skeptical weekly/monthly feedback, review of
+4. **Learning workspace:** integrated skeptical weekly/monthly feedback, review of
    handwritten reflections, reviewed context/memory, focused study/coaching, and
    broader agent support.
 
@@ -109,20 +112,19 @@ configuration, validation, formatting and file operations; no model output is
 interpreted as a command or a path. Broader runtime isolation may be reconsidered
 if unattended processing becomes a requirement.
 
-## Future reviews
+## Weekly review and future learning work
 
-Weekly review will compare daily checkpoints and the user's handwritten reflections.
-Preserve original writing; put dated, attributed corrections beneath it with
-evidence. Distinguish a conceptual error, a writing difficulty and missing evidence.
-Offer one or two observable practice actions, not a numeric competence score.
+[Weekly review](weekly-review.md) analyses full daily notes and personal responses.
+Feedback stays in the weekly note; originals in daily notes are never rewritten.
+A later invocation incorporates weekly answers and can revisit earlier practice.
+The active session supplies the model; Python validates citations and protects
+personal writing. English feedback is a saved opt-in preference.
 
-Monthly review will compare available weekly/daily evidence over time. Missing
-captures mean missing evidence, not regression. Conclusions should link to source
-notes and state uncertainty. Both reviews require separate future designs and
-validation; no review skill or automated schedule ships in this MVP.
+Monthly review and broader coaching remain future designs. Missing notes mean
+missing evidence, not regression. No numeric competence score is produced.
 
 ## Next milestone and handoff
 
-See the [roadmap and resumption guide](../roadmap.md) for the ongoing usage pilot
-and the proposed explicit weekly review. The delivery stages describe the broader
+See the [roadmap and resumption guide](../roadmap.md) for pilot history
+and weekly-review acceptance criteria. The delivery stages describe the broader
 vision; their next implementation order remains subject to owner review.

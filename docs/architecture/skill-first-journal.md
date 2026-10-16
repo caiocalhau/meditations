@@ -46,8 +46,10 @@ use and owner review; formatting and conflict checks are deterministic.
 
 ## Deferred
 
-Automatic session lifecycle capture, scheduling, sync automation, weekly and
-monthly review skills, reflection correction, selective memory, other agents and
+Weekly review was deferred by this original decision and is now implemented on
+the feature branch under the [weekly contract](weekly-review.md). Automatic session
+lifecycle capture, scheduling, sync automation, monthly review, selective memory,
+other agents and
 stronger analysis isolation need separate designs after the daily workflow has
 been used. The old Codex transcript/extraction runtime is removed from the active
 codebase; Git history retains the prior implementation. Existing private notes and
@@ -55,6 +57,6 @@ legacy JSON remain untouched and are not imported by the new helper.
 
 ## Next milestone and handoff
 
-See the [roadmap and resumption guide](../roadmap.md) for the ongoing usage pilot
-and the proposed explicit weekly review. The delivery stages describe the broader
+See the [roadmap and resumption guide](../roadmap.md) for pilot history
+and weekly-review acceptance criteria. The delivery stages describe the broader
 vision; their next implementation order remains subject to owner review.

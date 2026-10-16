@@ -12,7 +12,7 @@ from meditations.contracts import (
     CaptureSource,
     DayPreparation,
 )
-from meditations.files import atomic_write, workspace_directory, workspace_lock
+from meditations.files import atomic_write, managed_directory, workspace_lock
 from meditations.machine_config import MachineConfig
 
 TEMPLATE_VERSION = "daily-report-v1"
@@ -25,22 +25,12 @@ def _digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _managed_directory(workspace: Path, relative: str) -> Path:
-    directory = workspace_directory(workspace, relative)
-    for item in (directory, *directory.parents):
-        if item == workspace.parent:
-            break
-        if item.is_symlink():
-            raise ValueError("Managed vault path cannot contain a symbolic link")
-    return directory
-
-
 def _capture_directory(workspace: Path, day: date) -> Path:
-    return _managed_directory(workspace, f"engineering/captures/{day.isoformat()}")
+    return managed_directory(workspace, f"engineering/captures/{day.isoformat()}")
 
 
 def _daily_directory(workspace: Path) -> Path:
-    return _managed_directory(workspace, "engineering/daily")
+    return managed_directory(workspace, "engineering/daily")
 
 
 def _normalize_body(body: str) -> str:

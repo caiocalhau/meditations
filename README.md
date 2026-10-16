@@ -3,14 +3,15 @@
 Turn AI-assisted engineering work into a useful daily journal: what changed, why,
 what remains open, and what is worth learning next.
 
-Meditations is a small Python helper and two explicit Codex skills. You capture
+Meditations is a small Python helper and explicit Codex skills. You capture
 relevant work from each session with `$take-note`, then use `$update-journal` to
 combine that date's captures into one readable Markdown report. You write your own
 reflection in the note.
 
 **MVP status:** the skill-first workflow is merged into `main` and undergoing
 owner validation on Linux/macOS and real-session note quality.
-Weekly/monthly reviews and automatic capture are later stages.
+Weekly review is implemented on the feature branch; real-use validation remains
+open. Monthly reviews and automatic capture are later stages.
 
 ## Why this project
 
@@ -33,7 +34,7 @@ be delayed to the work date it belongs to. A later checkpoint adds progress; it
 does not erase the earlier one. Daily consolidation uses all available captures for
 that date, preserves your writing, and reports when nothing needs updating.
 
-On Linux and macOS, install the helper and link the two skills into Codex's user
+On Linux and macOS, install the helper and link the skills into Codex's user
 skill directory with the guided installer:
 
 ```bash
@@ -48,6 +49,8 @@ $take-note
 $take-note for 2026-10-06
 $update-journal
 $update-journal for 2026-10-06
+$weekly-review
+$weekly-review for 2026-10-06
 ```
 
 The date is optional for today. Use an explicit date when recording older work.
@@ -71,10 +74,30 @@ tools. The user chooses what session material is suitable to capture. A skill's
 instructions guide selection; they cannot guarantee that all sensitive meaning is
 removed. This workflow does not browse for study material or infer mastery.
 
+Weekly review reads the available daily notes and your responses for a Monday–Sunday
+week. It provides evidence-linked analysis immediately, then updates feedback when
+you write weekly answers and invoke it again. One note is stored under
+`engineering/weekly/`, named by Monday and titled with a readable date range.
+Current weeks are provisional and gaps are reported. See the
+[weekly review contract](docs/architecture/weekly-review.md) and
+[synthetic examples](examples/weekly-review/README.md).
+
+Enable optional English feedback once per machine:
+
+```bash
+meditations config set --english-feedback on
+```
+
+Write weekly answers in the practice area outside the generated analysis block.
+Questions and original writing survive repeat reviews. English feedback examines
+identifiable personal responses separately from technical reasoning. The approach
+is research-informed; it does not claim scientifically proven learning gains.
+
 There is no automatic transcript collection, scheduler, Git commit/push, or
-cross-machine sync service. Weekly reviews will later examine written reflections
-and add attributed corrections beneath the originals. Monthly reviews will look
-for supported patterns over time. Neither is part of this MVP.
+cross-machine sync service. Monthly review remains future work. Existing unmarked
+weekly previews are preserved as conflicts and require explicit conversion before
+updating. Put daily answers outside daily-generated boundaries: inline answers can
+be replaced by a later daily update; weekly review does not change that behavior.
 
 ## Development
 
@@ -99,7 +122,7 @@ See [the implementation architecture](docs/architecture/skill-first-journal.md),
 
 ## Next milestone
 
-The current milestone is normal-use validation across macOS and Linux. Development
-will resume from the [roadmap and resumption guide](docs/roadmap.md), which records
-the pilot checks and the proposed explicit weekly-review milestone. Future features
+The current milestone is validation of weekly analysis and protected response
+updates across Linux and macOS. The [roadmap](docs/roadmap.md) records pilot history
+and the weekly-review milestone. Future features
 require scope and implementation approval after reviewing the pilot feedback.

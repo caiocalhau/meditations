@@ -18,6 +18,7 @@ class MachineConfig(BaseModel):
     workspace: Path
     timezone: str
     language: Literal["en", "pt-BR"]
+    english_feedback: bool = False
 
     @field_validator("workspace")
     @classmethod
@@ -90,19 +91,50 @@ def configure(
     timezone: str,
     language: Literal["en", "pt-BR"],
     path: Path | None = None,
+    english_feedback: bool | None = None,
 ) -> MachineConfig:
     selected = _selected_path(path)
     validated_workspace = _validate_workspace(workspace)
-    config = MachineConfig(
-        schema_version=2,
-        workspace=validated_workspace,
-        timezone=timezone,
-        language=language,
-    )
     with workspace_lock(selected):
         if selected.is_symlink():
             raise ValueError("Refusing a symbolic-link machine configuration")
         original = selected.read_bytes() if selected.exists() else None
+        try:
+            previous = (
+                MachineConfig.model_validate_json(original)
+                if original is not None
+                else None
+            )
+        except ValueError:
+            previous = None
+        config = MachineConfig(
+            schema_version=2,
+            workspace=validated_workspace,
+            timezone=timezone,
+            language=language,
+            english_feedback=(
+                english_feedback
+                if english_feedback is not None
+                else previous.english_feedback
+                if previous
+                else False
+            ),
+        )
+        atomic_write(
+            selected,
+            (config.model_dump_json(indent=2) + "\n").encode(),
+            expected=original,
+        )
+    return config
+
+
+def set_english_feedback(enabled: bool, *, path: Path | None = None) -> MachineConfig:
+    selected = _selected_path(path)
+    with workspace_lock(selected):
+        original = selected.read_bytes()
+        config = load_machine_config(selected).model_copy(
+            update={"english_feedback": enabled}
+        )
         atomic_write(
             selected,
             (config.model_dump_json(indent=2) + "\n").encode(),
