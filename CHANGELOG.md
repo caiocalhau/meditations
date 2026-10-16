@@ -14,6 +14,8 @@ Target version: **0.2.0** — skill-first daily journal.
 
 ### Added
 
+- Explicit weekly learning reviews with evidence-linked reasoning feedback, protected practice responses, readable week ranges, and read-only daily-note sources.
+- Saved opt-in English feedback, first-setup guidance, prior-practice follow-up, and early unchanged/conflict/source-size reporting for weekly reviews.
 - Explicit Codex skills to capture conceptual session checkpoints and consolidate a work date into one daily report. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Readable Markdown checkpoints that accumulate across sessions and can be synchronized through the user's existing vault workflow. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Guided Linux/macOS installation with repeatable helper/skill registration, machine-local configuration and GNU Stow bootstrap guidance. ([#4](https://github.com/caiocalhau/meditations/pull/4))
@@ -24,6 +26,10 @@ Target version: **0.2.0** — skill-first daily journal.
 - Replaced the extraction/receipt architecture with Markdown checkpoints and a small Python helper for validation, formatting and guarded writes. The active session supplies the model and permissions; users capture relevant sessions and synchronize their checkpoints before consolidation on another machine. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Updated the daily report to group work, reasoning, outcomes, next steps, study resources and reflection questions while preserving personal writing. ([#4](https://github.com/caiocalhau/meditations/pull/4))
 - Updated setup, examples, architecture and packaging documentation to describe the skill-first workflow, its compatibility changes and pending validation. ([#4](https://github.com/caiocalhau/meditations/pull/4))
+
+### Fixed
+
+- Accept Windows CRLF line endings in synchronized captures while preserving content identities and original files; capture validation errors identify the affected file. ([#5](https://github.com/caiocalhau/meditations/pull/5))
 
 ### Removed
 

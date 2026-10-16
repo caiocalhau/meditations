@@ -50,3 +50,13 @@ def workspace_directory(workspace: Path, relative: str) -> Path:
     if not target.resolve().is_relative_to(workspace.resolve()):
         raise ValueError("Workspace directory points outside the selected workspace")
     return target
+
+
+def managed_directory(workspace: Path, relative: str) -> Path:
+    directory = workspace_directory(workspace, relative)
+    for item in (directory, *directory.parents):
+        if item == workspace.parent:
+            break
+        if item.is_symlink():
+            raise ValueError("Managed vault path cannot contain a symbolic link")
+    return directory

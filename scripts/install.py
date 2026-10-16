@@ -17,6 +17,8 @@ def destinations(repo: Path, home: Path) -> dict[Path, Path]:
         home / ".agents/skills/meditations-take-note": repo / "skills/take-note",
         home / ".agents/skills/meditations-update-journal": repo
         / "skills/update-journal",
+        home / ".agents/skills/meditations-weekly-review": repo
+        / "skills/weekly-review",
     }
 
 
@@ -41,7 +43,8 @@ def choose_settings(
     workspace: Path | None,
     timezone: str | None,
     language: str | None,
-) -> tuple[Path, str, str] | None:
+) -> tuple[Path, str, str, bool | None] | None:
+    english_feedback = None
     if workspace is None and (timezone is not None or language is not None):
         raise ValueError("Pass --workspace when changing timezone or language")
     if workspace is not None and (timezone is None or language is None):
@@ -61,7 +64,16 @@ def choose_settings(
         try:
             config = json.loads(config_path.read_bytes())
             if (
-                set(config) == {"schema_version", "workspace", "timezone", "language"}
+                {"schema_version", "workspace", "timezone", "language"} <= set(config)
+                and set(config)
+                <= {
+                    "schema_version",
+                    "workspace",
+                    "timezone",
+                    "language",
+                    "english_feedback",
+                }
+                and isinstance(config.get("english_feedback", False), bool)
                 and config["schema_version"] == 2
                 and Path(config["workspace"]).is_absolute()
                 and Path(config["workspace"]).is_dir()
@@ -79,6 +91,12 @@ def choose_settings(
         workspace = Path(input("Existing private vault directory: ").strip())
         timezone = input("Work-date timezone [UTC]: ").strip() or "UTC"
         language = input("Note language [en / pt-BR; default en]: ").strip() or "en"
+        feedback = (
+            input("Include English feedback in weekly reviews? [y/N]: ").strip().lower()
+        )
+        if feedback not in ("", "y", "yes", "n", "no"):
+            raise ValueError("Choose y or n for English feedback")
+        english_feedback = feedback in ("y", "yes")
     resolved = workspace.expanduser().resolve()
     if not resolved.is_dir():
         raise ValueError("The private vault directory must already exist")
@@ -90,7 +108,7 @@ def choose_settings(
         raise ValueError("Use a valid IANA timezone") from error
     if language not in ("en", "pt-BR"):
         raise ValueError("Choose en or pt-BR for the note language")
-    return resolved, timezone, language
+    return resolved, timezone, language, english_feedback
 
 
 def environment_matches(python: Path, repo: Path) -> bool:
@@ -145,7 +163,12 @@ def install(
     ensure_links(repo, home)
     command = environment / "bin/meditations"
     if settings is not None:
-        vault, tz, lang = settings
+        vault, tz, lang, english_feedback = settings
+        feedback_args = (
+            []
+            if english_feedback is None
+            else ["--english-feedback", "on" if english_feedback else "off"]
+        )
         subprocess.run(
             [
                 str(command),
@@ -156,11 +179,14 @@ def install(
                 tz,
                 "--language",
                 lang,
+                *feedback_args,
             ],
             check=True,
         )
     subprocess.run([str(command), "config", "show"], check=True)
-    print("Setup complete. In Codex, use $take-note and then $update-journal.")
+    print(
+        "Setup complete. In Codex, use $take-note, $update-journal and $weekly-review."
+    )
     print("Restart Codex if the skills do not appear.")
     if str(home / ".local/bin") not in os.environ.get("PATH", "").split(os.pathsep):
         print('Add "$HOME/.local/bin" to your shell PATH to use meditations.')

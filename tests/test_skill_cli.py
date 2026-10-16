@@ -43,6 +43,7 @@ def test_configure_capture_prepare_and_schema_commands(tmp_path, monkeypatch, ca
         "timezone": "America/Sao_Paulo",
         "language": "en",
         "today": "2026-10-07",
+        "english_feedback": False,
     }
 
     monkeypatch.setattr(

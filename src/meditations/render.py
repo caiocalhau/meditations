@@ -50,19 +50,19 @@ LABELS = {
 }
 
 
-def _text(value: str) -> str:
+def inline_text(value: str) -> str:
     return " ".join(value.split()).replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _cell(value: str) -> str:
-    return _text(value).replace("|", "\\|")
+    return inline_text(value).replace("|", "\\|")
 
 
 def _link_url(url: str) -> str:
     return quote(url, safe=":/?#[]@!$&'()*+,;=%")
 
 
-def _valid_resource(url: str, captures: list[str]) -> bool:
+def valid_resource(url: str, captures: list[str]) -> bool:
     try:
         parsed = urlsplit(url)
         if (
@@ -99,14 +99,15 @@ def _valid_resource(url: str, captures: list[str]) -> bool:
 
 
 def _topic(topic: JournalTopic) -> list[str]:
-    lines = [f"### {_text(topic.title)}\n\n"]
-    lines.extend(f"{_text(item)}\n\n" for item in topic.paragraphs)
+    lines = [f"### {inline_text(topic.title)}\n\n"]
+    lines.extend(f"{inline_text(item)}\n\n" for item in topic.paragraphs)
     if topic.bullets:
-        lines.extend(f"- {_text(item)}\n" for item in topic.bullets)
+        lines.extend(f"- {inline_text(item)}\n" for item in topic.bullets)
         lines.append("\n")
     if topic.steps:
         lines.extend(
-            f"{index}. {_text(item)}\n" for index, item in enumerate(topic.steps, 1)
+            f"{index}. {inline_text(item)}\n"
+            for index, item in enumerate(topic.steps, 1)
         )
         lines.append("\n")
     if topic.table is not None:
@@ -136,7 +137,7 @@ def render_daily(
     labels = LABELS[config.language]
     captures = [item.body for item in prepare_day(config, day).captures]
     for item in draft.learning:
-        if any(not _valid_resource(url, captures) for url in item.resource_urls):
+        if any(not valid_resource(url, captures) for url in item.resource_urls):
             raise ValueError(
                 "Learning resource is not a public URL found in a saved capture"
             )
@@ -150,35 +151,42 @@ def render_daily(
     if previous_note:
         lines.append(f"{labels['previous']}: {previous_note}.\n\n")
     lines.extend([f"## {labels['overview']}\n\n"])
-    lines.extend(f"- {_text(item)}\n" for item in draft.overview)
+    lines.extend(f"- {inline_text(item)}\n" for item in draft.overview)
     lines.extend([f"\n## {labels['work']}\n\n"])
     for topic in draft.topics:
         lines.extend(_topic(topic))
     if draft.open_items:
         lines.extend([f"## {labels['resume']}\n\n"])
-        lines.extend(f"- {_text(item)}\n" for item in draft.open_items)
+        lines.extend(f"- {inline_text(item)}\n" for item in draft.open_items)
         lines.append("\n")
     if draft.learning:
         lines.extend([f"## {labels['study']}\n\n"])
         for item in draft.learning:
             lines.extend(
-                [f"### {_text(item.concept)}\n\n", f"{_text(item.explanation)}\n\n"]
+                [
+                    f"### {inline_text(item.concept)}\n\n",
+                    f"{inline_text(item.explanation)}\n\n",
+                ]
             )
             if item.resource_urls:
                 links = ", ".join(
-                    f"[{_text(urlsplit(url).hostname or 'source')}]({_link_url(url)})"
+                    f"[{inline_text(urlsplit(url).hostname or 'source')}]"
+                    f"({_link_url(url)})"
                     for url in item.resource_urls
                 )
                 lines.extend([f"**Reading:** {links}\n\n"])
             if item.reading_question:
                 lines.extend(
-                    [f"**{labels['read']}:** {_text(item.reading_question)}\n\n"]
+                    [f"**{labels['read']}:** {inline_text(item.reading_question)}\n\n"]
                 )
             lines.extend(
-                [f"**{labels['practice']}:** {_text(item.suggested_practice)}\n\n"]
+                [
+                    f"**{labels['practice']}:** "
+                    f"{inline_text(item.suggested_practice)}\n\n"
+                ]
             )
     lines.extend([f"## {labels['questions']}\n\n"])
-    lines.extend(f"- {_text(item)}\n" for item in draft.reflection_questions)
+    lines.extend(f"- {inline_text(item)}\n" for item in draft.reflection_questions)
     return "".join(lines).encode("utf-8")
 
 

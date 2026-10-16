@@ -17,8 +17,12 @@ from meditations.machine_config import (
     load_machine_config,
     resolve_work_date,
     resolve_workspace,
+    set_english_feedback,
 )
 from meditations.render import write_daily
+from meditations.weekly import prepare_week
+from meditations.weekly_contracts import WeeklyDraft
+from meditations.weekly_render import write_weekly
 
 SAFE_ERROR_FIELDS = frozenset(
     {
@@ -42,6 +46,19 @@ SAFE_ERROR_FIELDS = frozenset(
         "resource_urls",
         "reading_question",
         "reflection_questions",
+        "findings",
+        "category",
+        "assessment",
+        "next_step",
+        "evidence",
+        "source_id",
+        "quote",
+        "limitations",
+        "english_feedback",
+        "suggestion",
+        "initial_practice",
+        "questions",
+        "actions",
     }
 )
 
@@ -67,7 +84,7 @@ def _read_input() -> bytes:
     return raw
 
 
-def _print(model: BaseModel | dict[str, str]) -> None:
+def _print(model: BaseModel | dict[str, object]) -> None:
     if isinstance(model, BaseModel):
         print(model.model_dump_json())
     else:
@@ -104,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--timezone", required=True, help="IANA timezone, for example America/Sao_Paulo"
     )
     configure_parser.add_argument("--language", choices=("en", "pt-BR"), default="en")
+    configure_parser.add_argument("--english-feedback", choices=("on", "off"))
 
     config_parser = commands.add_parser(
         "config", help="Inspect non-path machine defaults"
@@ -112,9 +130,11 @@ def build_parser() -> argparse.ArgumentParser:
     config_commands.add_parser(
         "show", help="Show configured timezone, language and local date"
     )
+    config_set = config_commands.add_parser("set", help="Change a saved preference")
+    config_set.add_argument("--english-feedback", choices=("on", "off"), required=True)
 
     schema = commands.add_parser("schema", help="Print a JSON input schema for a skill")
-    schema.add_argument("kind", choices=("capture", "daily"))
+    schema.add_argument("kind", choices=("capture", "daily", "weekly"))
 
     capture = commands.add_parser(
         "capture", help="Save one readable session checkpoint"
@@ -145,6 +165,23 @@ def build_parser() -> argparse.ArgumentParser:
     write.add_argument(
         "--input", default="-", choices=("-",), help="Read DailyDraft JSON from stdin"
     )
+    weekly = commands.add_parser(
+        "weekly", help="Prepare or update a weekly learning review"
+    )
+    weekly_commands = weekly.add_subparsers(dest="weekly_command", required=True)
+    weekly_prepare = weekly_commands.add_parser(
+        "prepare", help="Read daily notes and report whether review is needed"
+    )
+    weekly_prepare.add_argument(
+        "--date",
+        type=_date,
+        help="Any date in the selected week; defaults to the current week",
+    )
+    weekly_write = weekly_commands.add_parser(
+        "write", help="Validate and publish a weekly draft"
+    )
+    weekly_write.add_argument("--date", type=_date, required=True)
+    weekly_write.add_argument("--input", default="-", choices=("-",))
     return parser
 
 
@@ -165,12 +202,22 @@ def main(
                 timezone=args.timezone,
                 language=args.language,
                 path=config_path,
+                english_feedback=(
+                    args.english_feedback == "on"
+                    if args.english_feedback is not None
+                    else None
+                ),
             )
             _print({"status": "configured", "workspace": str(config.workspace)})
             return 0
 
         if args.command == "schema":
-            contract = CaptureDraft if args.kind == "capture" else DailyDraft
+            contracts: dict[str, type[BaseModel]] = {
+                "capture": CaptureDraft,
+                "daily": DailyDraft,
+                "weekly": WeeklyDraft,
+            }
+            contract = contracts[args.kind]
             print(json.dumps(contract.model_json_schema(), ensure_ascii=False))
             return 0
 
@@ -181,11 +228,16 @@ def main(
         )
 
         if args.command == "config":
+            if args.config_command == "set":
+                config = set_english_feedback(
+                    args.english_feedback == "on", path=config_path
+                )
             _print(
                 {
                     "timezone": config.timezone,
                     "language": config.language,
                     "today": work_date.isoformat(),
+                    "english_feedback": config.english_feedback,
                 }
             )
             return 0
@@ -207,6 +259,18 @@ def main(
                 }
             )
             return 0
+
+        if args.command == "weekly":
+            if args.weekly_command == "prepare":
+                prepared_week = prepare_week(config, work_date, now=current_time)
+                _print(prepared_week)
+                return 1 if prepared_week.status == "conflict" else 0
+            weekly_draft = WeeklyDraft.model_validate_json(_read_input())
+            weekly_result = write_weekly(
+                config, work_date, weekly_draft, now=current_time
+            )
+            _print(weekly_result)
+            return 1 if weekly_result.status == "conflict" else 0
 
         if args.daily_command == "prepare":
             prepared = prepare_day(config, work_date)

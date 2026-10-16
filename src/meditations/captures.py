@@ -12,7 +12,7 @@ from meditations.contracts import (
     CaptureSource,
     DayPreparation,
 )
-from meditations.files import atomic_write, workspace_directory, workspace_lock
+from meditations.files import atomic_write, managed_directory, workspace_lock
 from meditations.machine_config import MachineConfig
 
 TEMPLATE_VERSION = "daily-report-v1"
@@ -25,22 +25,12 @@ def _digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
-def _managed_directory(workspace: Path, relative: str) -> Path:
-    directory = workspace_directory(workspace, relative)
-    for item in (directory, *directory.parents):
-        if item == workspace.parent:
-            break
-        if item.is_symlink():
-            raise ValueError("Managed vault path cannot contain a symbolic link")
-    return directory
-
-
 def _capture_directory(workspace: Path, day: date) -> Path:
-    return _managed_directory(workspace, f"engineering/captures/{day.isoformat()}")
+    return managed_directory(workspace, f"engineering/captures/{day.isoformat()}")
 
 
 def _daily_directory(workspace: Path) -> Path:
-    return _managed_directory(workspace, "engineering/daily")
+    return managed_directory(workspace, "engineering/daily")
 
 
 def _normalize_body(body: str) -> str:
@@ -103,7 +93,9 @@ def save_capture(
 
 def _parse_capture(content: bytes, day: date, expected_id: str) -> CaptureSource:
     try:
-        header, body_bytes = content.split(b"\n---\n\n", maxsplit=1)
+        header, body_bytes = content.replace(b"\r\n", b"\n").split(
+            b"\n---\n\n", maxsplit=1
+        )
         lines = header.decode("utf-8").splitlines()
         metadata = dict(line.split(": ", maxsplit=1) for line in lines[1:])
         body = body_bytes.decode("utf-8")
@@ -156,7 +148,10 @@ def load_captures(workspace: Path, day: date) -> list[CaptureSource]:
         match = re.fullmatch(r"([0-9a-f]{64})-([0-9]{8}T[0-9]{12}Z)", path.stem)
         if not match:
             raise ValueError("Invalid capture filename identity")
-        source = _parse_capture(path.read_bytes(), day, match.group(1))
+        try:
+            source = _parse_capture(path.read_bytes(), day, match.group(1))
+        except ValueError as error:
+            raise ValueError(f"Invalid capture {path}: {error}") from error
         if _time_key(source.captured_at) != match.group(2):
             raise ValueError("Capture timestamp does not match its filename")
         sources.append(source)

@@ -9,7 +9,8 @@
   project environment after code changes. Use test-first changes for deterministic
   behavior and synthetic evaluations for future model behavior.
 - Update README when delivered behavior or setup changes and architecture when
-  contracts change. Record notable changes under CHANGELOG.md's `[Unreleased]`,
+  contracts change. Weekly behavior is defined in docs/architecture/weekly-review.md.
+  Record notable changes under CHANGELOG.md's `[Unreleased]`,
   adding PR links when known. A merge is not a release.
 - Follow Keep a Changelog: group unreleased changes by category, place released
   versions newest first, and use actual release dates. Preserve merged entries,
