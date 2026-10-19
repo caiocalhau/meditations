@@ -91,7 +91,8 @@ and a focused literature review. Broader automation still requires separate desi
    on both machines. Retain real trial material only in the private vault.
 4. Resolve demonstrated preservation or usability defects before expanding scope.
 5. After acceptance, choose the next goal from real usage. Automation and monthly
-   analysis remain separate proposals; merging this feature is not a release.
+   analysis remain separate proposals. Each merge records a development delivery
+   version; stability declarations and publication require separate owner approval.
 
 This document is a public handoff and planning checkpoint. It does not announce a
 release, certify the ongoing pilot, or authorize implementation of future features.

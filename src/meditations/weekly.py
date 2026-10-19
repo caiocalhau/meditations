@@ -65,6 +65,14 @@ def read_note(path: Path, *, limit: int = MAX_NOTE_BYTES) -> bytes:
         raise ValueError(f"Cannot read {path.name}: {reason}") from error
 
 
+def _path_exists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def make_source(
     kind: Literal["daily", "current_personal", "previous_practice"],
     day: date,
@@ -154,6 +162,7 @@ def prepare_week(
     dates = [start + timedelta(days=index) for index in range(7)]
     target = config.workspace / "engineering/weekly" / f"{start.isoformat()}.md"
     available: list[date] = []
+    missing: list[date] = []
     sources: list[WeeklySource] = []
     warnings: list[str] = []
     note_hash = None
@@ -164,11 +173,11 @@ def prepare_week(
     try:
         daily = managed_directory(config.workspace, "engineering/daily")
         weekly = managed_directory(config.workspace, "engineering/weekly")
-        if (daily.exists() and not daily.is_dir()) or (
-            weekly.exists() and not weekly.is_dir()
+        if (_path_exists(daily) and not daily.is_dir()) or (
+            _path_exists(weekly) and not weekly.is_dir()
         ):
             raise ValueError("Managed daily/weekly path is not a directory")
-        content = read_note(target) if target.exists() or target.is_symlink() else None
+        content = read_note(target) if _path_exists(target) else None
         personal = b""
         generated = b""
         if content is not None:
@@ -179,11 +188,13 @@ def prepare_week(
             if through is None or day > through:
                 continue
             path = daily / f"{day.isoformat()}.md"
-            if path.exists() or path.is_symlink():
+            if _path_exists(path):
                 body = read_note(path, limit=MAX_SOURCE_BYTES)
                 source_bytes += len(body)
                 sources.append(make_source("daily", day, body))
                 available.append(day)
+            else:
+                missing.append(day)
         if through is not None:
             prior, warnings = previous_practice(weekly, start)
             if prior is not None:
@@ -213,6 +224,10 @@ def prepare_week(
                 )
     except ValueError as error:
         status, message = "conflict", str(error)
+    except OSError as error:
+        name = Path(error.filename).name if error.filename else "weekly source paths"
+        reason = error.strerror or type(error).__name__
+        status, message = "conflict", f"Cannot inspect {name}: {reason}"
     return WeekPreparation(
         status=status,
         week_start=start,
@@ -222,10 +237,14 @@ def prepare_week(
         language=config.language,
         english_feedback=config.english_feedback,
         available_dates=available,
-        missing_dates=[
+        missing_dates=missing,
+        unchecked_dates=[
             day
             for day in dates
-            if through is not None and day <= through and day not in available
+            if through is not None
+            and day <= through
+            and day not in available
+            and day not in missing
         ],
         pending_dates=[day for day in dates if through is None or day > through],
         source_snapshot=snapshot,

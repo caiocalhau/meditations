@@ -13,6 +13,11 @@ owner validation on Linux/macOS and real-session note quality.
 Weekly review is implemented on the feature branch; real-use validation remains
 open. Monthly reviews and automatic capture are later stages.
 
+Every delivery to `main` increments a minor or patch development version under
+the [versioning policy](docs/architecture/versioning.md). Versions below `1.0.0`
+remain in initial development; a version bump does not declare stability or
+publish release artifacts.
+
 ## Why this project
 
 I started in software development without much daily technical guidance, learning
@@ -98,6 +103,8 @@ cross-machine sync service. Monthly review remains future work. Existing unmarke
 weekly previews are preserved as conflicts and require explicit conversion before
 updating. Put daily answers outside daily-generated boundaries: inline answers can
 be replaced by a later daily update; weekly review does not change that behavior.
+If weekly preparation stops early, its coverage distinguishes unchecked dates
+from confirmed missing notes. A conflict never returns source text for composition.
 
 ## Development
 

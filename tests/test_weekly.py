@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -236,6 +237,114 @@ def test_unmarked_and_symlink_targets_are_conflicts(tmp_path):
     target.unlink()
     target.symlink_to(config.workspace / "engineering/daily/2026-10-13.md")
     assert prepare_week(config, date(2026, 10, 15), now=NOW).status == "conflict"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [b"Manual preview\nMy answer: keep it.\n", b"<!-- meditations:generated:start -->"],
+)
+def test_target_conflict_leaves_elapsed_coverage_unchecked(tmp_path, body):
+    config = setup_week(tmp_path)
+    ready = prepare_week(config, date(2026, 10, 15), now=NOW)
+    draft = draft_for(ready)
+    target = Path(ready.path)
+    target.parent.mkdir()
+    target.write_bytes(body)
+
+    result = prepare_week(config, date(2026, 10, 15), now=NOW)
+
+    assert result.status == "conflict"
+    assert result.available_dates == []
+    assert result.missing_dates == []
+    assert result.unchecked_dates == [date(2026, 10, day) for day in range(12, 16)]
+    assert result.pending_dates == [date(2026, 10, day) for day in range(16, 19)]
+    assert result.sources == []
+    assert write_weekly(config, result.week_start, draft, now=NOW).status == "conflict"
+    assert target.read_bytes() == body
+
+
+@pytest.mark.parametrize(
+    "failure", ["encoding", "oversized", "symlink", "filesystem", "suppressed_error"]
+)
+def test_interrupted_discovery_preserves_only_confirmed_coverage(
+    tmp_path, monkeypatch, failure
+):
+    config = setup_week(tmp_path)
+    daily = config.workspace / "engineering/daily"
+    failed = daily / "2026-10-14.md"
+    later = daily / "2026-10-15.md"
+    later.write_text("A later existing note.")
+    if failure == "encoding":
+        failed.write_bytes(b"\xff")
+    elif failure == "oversized":
+        failed.write_bytes(b"x" * (MAX_SOURCE_BYTES + 1))
+    elif failure == "symlink":
+        failed.symlink_to(later)
+    else:
+        original_lstat = Path.lstat
+
+        def inaccessible(path):
+            if path == failed:
+                raise PermissionError(13, "Permission denied", str(path))
+            return original_lstat(path)
+
+        monkeypatch.setattr(Path, "lstat", inaccessible)
+        if failure == "suppressed_error":
+            # Python 3.14 path predicates return False for inspection errors.
+            for name in ("exists", "is_symlink"):
+                original = getattr(Path, name)
+
+                def suppressed(path, predicate=original):
+                    return False if path == failed else predicate(path)
+
+                monkeypatch.setattr(Path, name, suppressed)
+
+    result = prepare_week(config, date(2026, 10, 15), now=NOW)
+
+    assert result.status == "conflict"
+    assert result.available_dates == [date(2026, 10, 13)]
+    assert result.missing_dates == [date(2026, 10, 12)]
+    assert result.unchecked_dates == [date(2026, 10, 14), date(2026, 10, 15)]
+    assert result.pending_dates == [date(2026, 10, day) for day in range(16, 19)]
+    assert result.sources == []
+    assert "2026-10-14.md" in result.message
+    assert not (config.workspace / "engineering/weekly").exists()
+
+
+def test_post_discovery_conflict_retains_complete_daily_coverage(tmp_path):
+    config = setup_week(tmp_path)
+    prior = config.workspace / "engineering/weekly/2026-10-05.md"
+    prior.parent.mkdir()
+    prior.write_text("<!-- meditations:generated:start -->")
+
+    result = prepare_week(config, date(2026, 10, 15), now=NOW)
+
+    assert result.status == "conflict"
+    assert result.available_dates == [date(2026, 10, 13)]
+    assert result.missing_dates == [date(2026, 10, day) for day in (12, 14, 15)]
+    assert result.unchecked_dates == []
+    assert result.sources == []
+
+
+def test_successful_empty_future_and_unchanged_coverage_is_fully_checked(tmp_path):
+    config = setup_week(tmp_path)
+    ready = prepare_week(config, date(2026, 10, 15), now=NOW)
+    assert ready.unchecked_dates == []
+    write_weekly(config, ready.week_start, draft_for(ready), now=NOW)
+    unchanged = prepare_week(config, ready.week_start, now=NOW)
+    assert unchanged.status == "unchanged"
+    assert unchanged.unchecked_dates == []
+    assert unchanged.available_dates == ready.available_dates
+    assert unchanged.missing_dates == ready.missing_dates
+
+    empty = prepare_week(config, date(2026, 9, 30), now=NOW)
+    assert empty.status == "empty"
+    assert len(empty.missing_dates) == 7
+    assert empty.unchecked_dates == []
+    future = prepare_week(config, date(2026, 10, 20), now=NOW)
+    assert future.status == "empty"
+    assert future.unchecked_dates == future.missing_dates == []
+    assert len(future.pending_dates) == 7
 
 
 @pytest.mark.parametrize(
