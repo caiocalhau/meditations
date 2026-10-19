@@ -88,6 +88,7 @@ class WeekPreparation(BaseModel):
     english_feedback: bool
     available_dates: list[date] = Field(default_factory=lambda: list[date]())
     missing_dates: list[date] = Field(default_factory=lambda: list[date]())
+    unchecked_dates: list[date] = Field(default_factory=lambda: list[date]())
     pending_dates: list[date] = Field(default_factory=lambda: list[date]())
     source_snapshot: Hash
     expected_note_sha256: Hash | None

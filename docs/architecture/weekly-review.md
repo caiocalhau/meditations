@@ -68,6 +68,16 @@ unchanged. New answers, changed daily notes or changed preferences trigger revie
 - `meditations weekly write --date YYYY-MM-DD --input -`: validate a prepared draft
   and publish the note, returning its actual status/path.
 
+Coverage reports successfully read daily notes in `available_dates`, dates checked
+and found absent in `missing_dates`, and future dates in `pending_dates`.
+`unchecked_dates` contains elapsed dates not successfully classified, including a
+date whose inspection failed. Early target conflicts leave all elapsed dates
+unchecked; interrupted daily discovery preserves earlier confirmed classifications.
+Errors after discovery can return complete coverage while still blocking review.
+Unchecked dates must not be interpreted as missing notes. All conflicts withhold
+source bodies and prevent drafting/writing; preparation never changes source or
+target notes.
+
 Combined source text is bounded to 256 KiB before drafting. The structured draft
 uses the existing 2 MiB input ceiling and bounded text fields. These are local
 engineering budgets, not token or subscription predictions. Do not silently

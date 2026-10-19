@@ -29,6 +29,7 @@ Target version: **0.2.0** — skill-first daily journal.
 
 ### Fixed
 
+- Distinguish unchecked weekly dates from confirmed missing daily notes when preparation stops on a target or source conflict, preserving completed coverage and withholding source bodies. ([#6](https://github.com/caiocalhau/meditations/issues/6))
 - Accept Windows CRLF line endings in synchronized captures while preserving content identities and original files; capture validation errors identify the affected file. ([#5](https://github.com/caiocalhau/meditations/pull/5))
 
 ### Removed

@@ -98,6 +98,8 @@ cross-machine sync service. Monthly review remains future work. Existing unmarke
 weekly previews are preserved as conflicts and require explicit conversion before
 updating. Put daily answers outside daily-generated boundaries: inline answers can
 be replaced by a later daily update; weekly review does not change that behavior.
+If weekly preparation stops early, its coverage distinguishes unchecked dates
+from confirmed missing notes. A conflict never returns source text for composition.
 
 ## Development
 
