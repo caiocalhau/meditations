@@ -13,6 +13,11 @@ owner validation on Linux/macOS and real-session note quality.
 Weekly review is implemented on the feature branch; real-use validation remains
 open. Monthly reviews and automatic capture are later stages.
 
+Every delivery to `main` increments a minor or patch development version under
+the [versioning policy](docs/architecture/versioning.md). Versions below `1.0.0`
+remain in initial development; a version bump does not declare stability or
+publish release artifacts.
+
 ## Why this project
 
 I started in software development without much daily technical guidance, learning

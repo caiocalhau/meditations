@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meditations"
-version = "0.1.0.dev0"
+version = "0.2.1"
 description = "Evidence-based engineering reflection from AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -3,14 +3,33 @@
 Notable project changes are recorded here.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Release numbering: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-See the [versioning policy](docs/architecture/versioning.md) for development
-versions and release preparation. Merging a change is not a release.
+Version numbering: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+See the [versioning policy](docs/architecture/versioning.md). Each merge to main
+records a development delivery; stability and artifact publication are separate.
 
 
-## [Unreleased](https://github.com/caiocalhau/meditations/commits/main)
+## [Unreleased](https://github.com/caiocalhau/meditations/compare/fd403a320ef409826773759cb532c8b11312e22d...HEAD)
 
-Target version: **0.2.0** — skill-first daily journal.
+Target version: **0.2.1** — weekly coverage diagnostics. Pending merge of
+[#7](https://github.com/caiocalhau/meditations/pull/7); assign its actual merge date
+when recording the completed delivery.
+
+### Changed
+
+- Established a minor or patch version bump for each delivery to main, with matching package metadata; stable milestones and artifact publication remain subject to explicit owner approval. ([#7](https://github.com/caiocalhau/meditations/pull/7))
+
+### Fixed
+
+- Distinguish unchecked weekly dates from confirmed missing daily notes when preparation stops on a target or source conflict, preserving completed coverage and withholding source bodies. ([#6](https://github.com/caiocalhau/meditations/issues/6), [#7](https://github.com/caiocalhau/meditations/pull/7))
+
+
+## [0.2.0](https://github.com/caiocalhau/meditations/tree/fd403a320ef409826773759cb532c8b11312e22d) - 2026-10-16
+
+Development baseline assigned retrospectively to main through
+[#5](https://github.com/caiocalhau/meditations/pull/5), including the skill-first
+replacement and weekly review. The date is that merge's date. No release tag,
+stable declaration or published artifact is implied. Previously merged entries
+are preserved below.
 
 ### Added
 
@@ -29,7 +48,6 @@ Target version: **0.2.0** — skill-first daily journal.
 
 ### Fixed
 
-- Distinguish unchecked weekly dates from confirmed missing daily notes when preparation stops on a target or source conflict, preserving completed coverage and withholding source bodies. ([#6](https://github.com/caiocalhau/meditations/issues/6))
 - Accept Windows CRLF line endings in synchronized captures while preserving content identities and original files; capture validation errors identify the affected file. ([#5](https://github.com/caiocalhau/meditations/pull/5))
 
 ### Removed
